@@ -79,9 +79,16 @@ grant execute on all functions in schema tests to authenticated, anon, service_r
 -- The tutor's address must be the one 0002 seeds into tutor_allowlist, or
 -- handle_new_user() refuses the signup.
 
+-- GoTrue's Go string scanner errors on NULL for the token columns below (it
+-- expects '', never NULL) — a real signup then trips over any fixture row
+-- that omits them, because the duplicate-email check scans every user. Set
+-- them explicitly rather than relying on the column defaults.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token,
+  email_change_token_new, email_change_token_current, email_change,
+  reauthentication_token,
   created_at, updated_at
 )
 values
@@ -92,6 +99,7 @@ values
    crypt('password123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}',
    '{"role":"tutor","full_name":"Tutor A"}',
+   '', '', '', '', '', '',
    now(), now()),
 
   -- student A
@@ -101,6 +109,7 @@ values
    crypt('password123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}',
    '{"role":"student","full_name":"Student A","class_level":"8","section":"Marigold","session_label":"2026-2027"}',
+   '', '', '', '', '', '',
    now(), now()),
 
   -- guardian A
@@ -110,6 +119,7 @@ values
    crypt('password123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}',
    '{"role":"guardian","full_name":"Guardian A"}',
+   '', '', '', '', '', '',
    now(), now()),
 
   -- student B — a different family, in the same section
@@ -119,6 +129,7 @@ values
    crypt('password123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}',
    '{"role":"student","full_name":"Student B","class_level":"8","section":"Marigold","session_label":"2026-2027"}',
+   '', '', '', '', '', '',
    now(), now()),
 
   -- guardian B
@@ -128,6 +139,7 @@ values
    crypt('password123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}',
    '{"role":"guardian","full_name":"Guardian B"}',
+   '', '', '', '', '', '',
    now(), now()),
 
   -- guardian C — redeemed student A's code, never approved
@@ -137,6 +149,7 @@ values
    crypt('password123', gen_salt('bf')), now(),
    '{"provider":"email","providers":["email"]}',
    '{"role":"guardian","full_name":"Guardian C"}',
+   '', '', '', '', '', '',
    now(), now());
 
 -- -------------------------------------------------------------------- links ---
