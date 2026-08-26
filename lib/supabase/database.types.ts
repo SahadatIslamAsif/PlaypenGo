@@ -268,6 +268,104 @@ export type Database = {
         }
         Relationships: []
       }
+      routine_periods: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string | null
+          id: string
+          is_academic: boolean
+          period_no: number
+          raw_text: string | null
+          routine_id: string
+          start_time: string | null
+          student_id: string
+          student_subject_id: string | null
+          teacher_raw: string | null
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time?: string | null
+          id?: string
+          is_academic?: boolean
+          period_no: number
+          raw_text?: string | null
+          routine_id: string
+          start_time?: string | null
+          student_id: string
+          student_subject_id?: string | null
+          teacher_raw?: string | null
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string | null
+          id?: string
+          is_academic?: boolean
+          period_no?: number
+          raw_text?: string | null
+          routine_id?: string
+          start_time?: string | null
+          student_id?: string
+          student_subject_id?: string | null
+          teacher_raw?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_periods_routine_id_student_id_fkey"
+            columns: ["routine_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id", "student_id"]
+          },
+          {
+            foreignKeyName: "routine_periods_student_subject_id_student_id_fkey"
+            columns: ["student_subject_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "student_subjects"
+            referencedColumns: ["id", "student_id"]
+          },
+        ]
+      }
+      routines: {
+        Row: {
+          created_at: string
+          id: string
+          image_path: string | null
+          is_active: boolean
+          parsed_at: string | null
+          session_label: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          is_active?: boolean
+          parsed_at?: string | null
+          session_label: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_path?: string | null
+          is_active?: boolean
+          parsed_at?: string | null
+          session_label?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routines_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_subjects: {
         Row: {
           catalog_id: string | null
@@ -507,6 +605,14 @@ export type Database = {
     Functions: {
       can_log_for: { Args: { p_student: string }; Returns: boolean }
       can_read_student: { Args: { p_student: string }; Returns: boolean }
+      capture_routine_alias: {
+        Args: { p_raw: string; p_student: string; p_subject: string }
+        Returns: boolean
+      }
+      commit_routine_grid: {
+        Args: { p_grid: Json; p_session: string; p_student: string }
+        Returns: Json
+      }
       commit_syllabus_tree: {
         Args: { p_session: string; p_student: string; p_tree: Json }
         Returns: Json
@@ -541,6 +647,10 @@ export type Database = {
       redeem_link_code: { Args: { p_code: string }; Returns: Json }
       shares_link_with: { Args: { p_other: string }; Returns: boolean }
       storage_owner: { Args: { p_name: string }; Returns: string }
+      update_routine_period: {
+        Args: { p_patch: Json; p_period: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

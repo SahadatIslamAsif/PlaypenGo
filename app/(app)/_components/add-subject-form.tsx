@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Combobox, type ComboboxItem } from "@/components/ui/combobox";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
@@ -29,17 +30,15 @@ export function AddSubjectForm({ catalog }: { catalog: CatalogEntry[] }) {
     }
   }, [pending, state]);
 
-  const suggestions = useMemo(() => {
-    const query = name.trim().toLowerCase();
-    if (query.length < 2) return [];
-    return catalog
-      .filter(
-        (entry) =>
-          entry.name.toLowerCase().includes(query) ||
-          entry.common_aliases.some((alias) => alias.toLowerCase().includes(query)),
-      )
-      .slice(0, 6);
-  }, [catalog, name]);
+  const items: ComboboxItem[] = useMemo(
+    () =>
+      catalog.map((entry) => ({
+        id: entry.id,
+        label: entry.name,
+        keywords: entry.common_aliases,
+      })),
+    [catalog],
+  );
 
   function close() {
     setOpen(false);
@@ -64,35 +63,24 @@ export function AddSubjectForm({ catalog }: { catalog: CatalogEntry[] }) {
           <input type="hidden" name="catalog_id" value={catalogId} />
 
           <Field label="Subject name" htmlFor="subject_name">
-            <Input
+            <Combobox
               id="subject_name"
               name="display_name"
               value={name}
-              onChange={(e) => {
-                setName(e.target.value);
+              items={items}
+              // Typing past a suggestion drops the catalogue link: §4.1 keeps
+              // display_name as the school's own name, and a stale catalog_id
+              // would claim a match the text no longer makes.
+              onChange={(text) => {
+                setName(text);
                 setCatalogId("");
               }}
-              autoComplete="off"
+              onSelect={(item) => {
+                setName(item.label);
+                setCatalogId(item.id);
+              }}
               placeholder="Environmental Management"
-              required
             />
-            {suggestions.length > 0 ? (
-              <div className="mt-1.5 flex flex-col gap-1 rounded-button border border-hairline bg-surface p-1">
-                {suggestions.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => {
-                      setName(entry.name);
-                      setCatalogId(entry.id);
-                    }}
-                    className="rounded-button px-2 py-1.5 text-left text-sm text-body hover:bg-surface-sunk"
-                  >
-                    {entry.name}
-                  </button>
-                ))}
-              </div>
-            ) : null}
           </Field>
 
           <Field label="Teacher (optional)" htmlFor="teacher_name">

@@ -39,8 +39,21 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </form>
         </div>
       </header>
-      {profile && profile.role !== "tutor" ? (
-        <NavLinks links={[{ href: "/", label: "Home" }, { href: "/subjects", label: "Subjects" }]} />
+      {/* The tutor's roster is Phase 7, so /subjects still redirects them away.
+          /routine does not — it resolves a linked student, which is how a tutor
+          sets up a routine during a session. */}
+      {profile ? (
+        <NavLinks
+          links={[
+            ...(profile.role === "tutor"
+              ? []
+              : [
+                  { href: "/", label: "Home" },
+                  { href: "/subjects", label: "Subjects" },
+                ]),
+            { href: "/routine", label: "Routine" },
+          ]}
+        />
       ) : null}
       <main className="flex-1">{children}</main>
     </div>

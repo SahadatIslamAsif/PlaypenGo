@@ -7,8 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
     "db:seed-catalog": "tsx --env-file=.env.local scripts/seed-subjects-catalog.ts"
   },
   "dependencies": {
@@ -29,6 +32,11 @@
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "unrs-resolver@1.12.2": true
   }
 }
