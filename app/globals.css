@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --wash-from: #edf8f1;
+  --wash-to: #dcf0e4;
+  --shell: #ffffff;
+  --surface: #ffffff;
+  --surface-sunk: #f5f8f6;
+  --ink: #0e1a14;
+  --body: #3b4a42;
+  --muted: #8a9a92;
+  --hairline: #e6efe9;
+  --accent: #1b7a50;
+
+  --tint-mint: #dcf0e2;
+  --tint-sage: #e6f1d9;
+  --tint-teal: #d6edea;
+  /* Tint fills stay pale in both themes (they're accent chips, not surfaces
+     that invert), so text on them needs a color that doesn't swap with
+     --ink — otherwise dark mode puts light ink on a light chip. */
+  --tint-ink: #0e1a14;
+
+  --chart-1: #1b7a50;
+  --chart-2: #54be8a;
+  --chart-3: #9bdcb8;
+  --chart-area-from: rgba(84, 190, 138, 0.22);
+  --chart-area-to: rgba(84, 190, 138, 0);
+
+  --shadow-soft-value: 0 1px 2px rgba(14, 26, 20, 0.04);
+  --shadow-elevated-value: 0 10px 30px rgba(14, 26, 20, 0.06);
+}
+
+:root.dark {
+  --wash-from: #0b1310;
+  --wash-to: #0b1310;
+  --shell: #111c17;
+  --surface: #16241d;
+  --surface-sunk: #16241d;
+  --ink: #e9f3ed;
+  --body: #c3d4ca;
+  --muted: #8ca398;
+  --hairline: #22352c;
+  --accent: #5fd79a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-wash: var(--wash-to);
+  --color-shell: var(--shell);
+  --color-surface: var(--surface);
+  --color-surface-sunk: var(--surface-sunk);
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-hairline: var(--hairline);
+  --color-accent: var(--accent);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-tint-mint: var(--tint-mint);
+  --color-tint-sage: var(--tint-sage);
+  --color-tint-teal: var(--tint-teal);
+  --color-tint-ink: var(--tint-ink);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+
+  --radius-shell: 28px;
+  --radius-card: 20px;
+  --radius-tint: 16px;
+  --radius-button: 12px;
+  --radius-pill: 999px;
+
+  --shadow-soft: var(--shadow-soft-value);
+  --shadow-elevated: var(--shadow-elevated-value);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100svh;
+  background: linear-gradient(160deg, var(--wash-from), var(--wash-to));
+  color: var(--color-body);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  color: var(--color-ink);
+}
+
+* {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
