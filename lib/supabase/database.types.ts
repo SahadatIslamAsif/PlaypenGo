@@ -507,6 +507,10 @@ export type Database = {
     Functions: {
       can_log_for: { Args: { p_student: string }; Returns: boolean }
       can_read_student: { Args: { p_student: string }; Returns: boolean }
+      commit_syllabus_tree: {
+        Args: { p_session: string; p_student: string; p_tree: Json }
+        Returns: Json
+      }
       is_guardian_of: { Args: { p_student: string }; Returns: boolean }
       is_pending_guardian_for_my_student: {
         Args: { p_other: string }
