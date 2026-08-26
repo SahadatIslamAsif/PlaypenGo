@@ -22,6 +22,20 @@ import { createClient } from "@/lib/supabase/server";
 // only the dashboard page has one, and Next parallel routes would need a
 // default.tsx on every other route for no benefit, so the dashboard just
 // renders a two-column grid inside <main>.
+//
+// Scroll model, and it differs by branch on purpose:
+//
+//   >=640  the shell is pinned to the viewport (sm:h-dvh on the root) and
+//          <main> is the only scrolling box, so the header, sidebar and the
+//          Log out button pinned to its bottom never move. This only works
+//          if every ancestor of <main> has a *definite* height — hence
+//          h-dvh rather than min-h-screen, and min-h-0 on each flex item to
+//          clear the default `min-height: auto` floor that would otherwise
+//          keep them at content height.
+//   <640   ordinary document scroll. BottomTabs is already `fixed`, so the
+//          chrome stays put anyway, and pinning the branch to a viewport
+//          height would cost env(safe-area-inset-bottom), momentum scroll
+//          and URL-bar collapse for nothing.
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
@@ -36,22 +50,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const role = (profile?.role as "student" | "guardian" | "tutor" | undefined) ?? "student";
 
   return (
-    <div className="min-h-screen bg-wash">
+    <div className="min-h-screen bg-wash sm:h-dvh sm:overflow-hidden">
       {/* ---------------------------------------------------------- >=640 --- */}
-      <div className="mx-auto hidden min-h-screen max-w-6xl sm:flex sm:flex-col sm:gap-4 sm:px-6 sm:py-6">
+      <div className="mx-auto hidden max-w-6xl sm:flex sm:h-full sm:min-h-0 sm:flex-col sm:gap-4 sm:px-6 sm:py-6">
         <Header fullName={profile?.full_name ?? null} role={role} />
         {profile ? (
-          <div className="flex flex-1 overflow-hidden rounded-shell border border-hairline bg-shell shadow-elevated">
+          <div className="flex min-h-0 flex-1 overflow-hidden rounded-shell border border-hairline bg-shell shadow-elevated">
             <div className="hidden lg:flex">
               <Sidebar fullName={profile.full_name} email={profile.email} role={role} />
             </div>
             <div className="flex lg:hidden">
               <IconRail role={role} />
             </div>
-            <main className="min-w-0 flex-1 overflow-y-auto p-6">{children}</main>
+            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6">{children}</main>
           </div>
         ) : (
-          <main className="flex-1">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
         )}
       </div>
 
