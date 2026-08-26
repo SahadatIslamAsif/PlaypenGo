@@ -34,6 +34,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessments: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          occurred_date: string | null
+          paper_id: string | null
+          predicted_for_date: string | null
+          scheduled_date: string | null
+          status: string
+          student_id: string
+          student_subject_id: string
+          type: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          occurred_date?: string | null
+          paper_id?: string | null
+          predicted_for_date?: string | null
+          scheduled_date?: string | null
+          status?: string
+          student_id: string
+          student_subject_id: string
+          type: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          occurred_date?: string | null
+          paper_id?: string | null
+          predicted_for_date?: string | null
+          scheduled_date?: string | null
+          status?: string
+          student_id?: string
+          student_subject_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_chapter_id_student_id_fkey"
+            columns: ["chapter_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id", "student_id"]
+          },
+          {
+            foreignKeyName: "assessments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_paper_id_student_id_fkey"
+            columns: ["paper_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "subject_papers"
+            referencedColumns: ["id", "student_id"]
+          },
+          {
+            foreignKeyName: "assessments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_student_subject_id_student_id_fkey"
+            columns: ["student_subject_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "student_subjects"
+            referencedColumns: ["id", "student_id"]
+          },
+        ]
+      }
       chapters: {
         Row: {
           created_at: string
@@ -267,6 +348,72 @@ export type Database = {
           timezone?: string
         }
         Relationships: []
+      }
+      results: {
+        Row: {
+          assessment_id: string
+          converted: number | null
+          converted_scale: number
+          created_at: string
+          entry_mode: string
+          id: string
+          logged_at: string
+          ocr_confidence: Json | null
+          paper_missing: boolean
+          percentage: number | null
+          raw_obtained: number
+          raw_total: number
+          student_id: string
+          verified_by: string | null
+        }
+        Insert: {
+          assessment_id: string
+          converted?: number | null
+          converted_scale: number
+          created_at?: string
+          entry_mode?: string
+          id?: string
+          logged_at?: string
+          ocr_confidence?: Json | null
+          paper_missing?: boolean
+          percentage?: number | null
+          raw_obtained: number
+          raw_total: number
+          student_id: string
+          verified_by?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          converted?: number | null
+          converted_scale?: number
+          created_at?: string
+          entry_mode?: string
+          id?: string
+          logged_at?: string
+          ocr_confidence?: Json | null
+          paper_missing?: boolean
+          percentage?: number | null
+          raw_obtained?: number
+          raw_total?: number
+          student_id?: string
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "results_assessment_id_student_id_fkey"
+            columns: ["assessment_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id", "student_id"]
+          },
+          {
+            foreignKeyName: "results_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       routine_periods: {
         Row: {
@@ -642,6 +789,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      log_manual_result: {
+        Args: { p_entry: Json; p_student: string }
+        Returns: Json
       }
       my_role: { Args: never; Returns: string }
       redeem_link_code: { Args: { p_code: string }; Returns: Json }
