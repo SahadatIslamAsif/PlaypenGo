@@ -1,0 +1,296 @@
+[
+  {
+    "name": "English Language",
+    "code": "1123",
+    "level": "o_level",
+    "common_aliases": ["Eng Lang", "E.Lang", "English"]
+  },
+  {
+    "name": "English Literature",
+    "code": "2010",
+    "level": "o_level",
+    "common_aliases": ["Eng Lit", "E.Lit", "Literature", "Literature in English"]
+  },
+  {
+    "name": "French",
+    "code": "3015",
+    "level": "o_level",
+    "common_aliases": ["Fr"]
+  },
+  {
+    "name": "German",
+    "code": "3025",
+    "level": "o_level",
+    "common_aliases": ["Ger"]
+  },
+  {
+    "name": "Spanish",
+    "code": "3035",
+    "level": "o_level",
+    "common_aliases": ["Sp"]
+  },
+  {
+    "name": "Arabic",
+    "code": "3180",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Hindi",
+    "code": "3195",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Nepali",
+    "code": "3202",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Bengali",
+    "code": "3204",
+    "level": "o_level",
+    "common_aliases": ["Bangla"]
+  },
+  {
+    "name": "Sinhala",
+    "code": "3205",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Tamil",
+    "code": "3206",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "First Language Urdu",
+    "code": "3247",
+    "level": "o_level",
+    "common_aliases": ["Urdu"]
+  },
+  {
+    "name": "Second Language Urdu",
+    "code": "3248",
+    "level": "o_level",
+    "common_aliases": ["Urdu"]
+  },
+  {
+    "name": "Biblical Studies",
+    "code": "2035",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Hinduism",
+    "code": "2055",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Islamic Religion and Culture",
+    "code": "2056",
+    "level": "o_level",
+    "common_aliases": ["Islamic Studies"]
+  },
+  {
+    "name": "Islamiyat",
+    "code": "2058",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Pakistan Studies",
+    "code": "2059",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "History",
+    "code": "2158",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Geography",
+    "code": "2217",
+    "level": "o_level",
+    "common_aliases": ["Geo"]
+  },
+  {
+    "name": "Sociology",
+    "code": "2251",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Economics",
+    "code": "2281",
+    "level": "o_level",
+    "common_aliases": ["Econs", "Eco"]
+  },
+  {
+    "name": "Bangladesh Studies",
+    "code": "7094",
+    "level": "o_level",
+    "common_aliases": ["BD Studies", "BDS", "B.D. Studies"]
+  },
+  {
+    "name": "Environmental Management",
+    "code": "5014",
+    "level": "o_level",
+    "common_aliases": ["Env. Management", "Env Mgt", "EM", "Env. Mgmt"]
+  },
+  {
+    "name": "Agriculture",
+    "code": "5038",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Physics",
+    "code": "5054",
+    "level": "o_level",
+    "common_aliases": ["Phy"]
+  },
+  {
+    "name": "Chemistry",
+    "code": "5070",
+    "level": "o_level",
+    "common_aliases": ["Chem"]
+  },
+  {
+    "name": "Biology",
+    "code": "5090",
+    "level": "o_level",
+    "common_aliases": ["Bio"]
+  },
+  {
+    "name": "Human and Social Biology",
+    "code": "5096",
+    "level": "o_level",
+    "common_aliases": ["HSB"]
+  },
+  {
+    "name": "Combined Science",
+    "code": "5129",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Mathematics D",
+    "code": "4024",
+    "level": "o_level",
+    "common_aliases": ["Maths", "Math D", "Math-D", "Mathematics"]
+  },
+  {
+    "name": "Additional Mathematics",
+    "code": "4037",
+    "level": "o_level",
+    "common_aliases": ["Add Math", "Add Maths", "A.Math", "AddMath"]
+  },
+  {
+    "name": "Statistics",
+    "code": "4040",
+    "level": "o_level",
+    "common_aliases": ["Stats"]
+  },
+  {
+    "name": "Computer Science",
+    "code": "2210",
+    "level": "o_level",
+    "common_aliases": ["Comp Sci", "CS", "Computing"]
+  },
+  {
+    "name": "Commerce",
+    "code": "7100",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Commercial Studies",
+    "code": "7101",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Business Studies",
+    "code": "7115",
+    "level": "o_level",
+    "common_aliases": ["Business", "B.St", "BS"]
+  },
+  {
+    "name": "Accounting",
+    "code": "7707",
+    "level": "o_level",
+    "common_aliases": ["Accounts", "Principles of Accounts", "POA"]
+  },
+  {
+    "name": "Art",
+    "code": "6010",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Art and Design",
+    "code": "6090",
+    "level": "o_level",
+    "common_aliases": ["Art & Design"]
+  },
+  {
+    "name": "Woodwork",
+    "code": "6030",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Metalwork",
+    "code": "6040",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Design and Technology",
+    "code": "6043",
+    "level": "o_level",
+    "common_aliases": ["D&T"]
+  },
+  {
+    "name": "Fashion and Fabrics",
+    "code": "6050",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Food and Nutrition",
+    "code": "6065",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Fashion and Textiles",
+    "code": "6130",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Travel and Tourism",
+    "code": "7096",
+    "level": "o_level",
+    "common_aliases": []
+  },
+  {
+    "name": "Bengali I",
+    "code": null,
+    "level": "lower_secondary",
+    "common_aliases": ["Bangla I", "Bangla 1st"]
+  },
+  {
+    "name": "Bengali II",
+    "code": null,
+    "level": "lower_secondary",
+    "common_aliases": ["Bangla II", "Bangla 2nd"]
+  }
+]

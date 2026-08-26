@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import type { ReactNode } from "react";
+import { NavLinks } from "@/components/nav-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOutAction } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -38,6 +39,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </form>
         </div>
       </header>
+      {profile && profile.role !== "tutor" ? (
+        <NavLinks links={[{ href: "/", label: "Home" }, { href: "/subjects", label: "Subjects" }]} />
+      ) : null}
       <main className="flex-1">{children}</main>
     </div>
   );

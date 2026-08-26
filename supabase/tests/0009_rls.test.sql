@@ -379,10 +379,14 @@ select tests.login_as(tests.uid('student_a'));
 -- §3.3: the catalogue is readable by all authenticated users and writable by
 -- nobody. 0008 revokes the write privileges outright, so this fails before the
 -- policy layer is reached.
-select is(
-  (select count(*) from public.subjects_catalog),
-  2::bigint,
-  'student A reads the whole subject catalogue'
+--
+-- Not pinned to the fixture's own 2 rows: scripts/seed-subjects-catalog.ts
+-- (Phase 2) writes real catalogue data into this same table outside the
+-- fixture, and this assertion's job is "nothing is filtered away by RLS", not
+-- "the catalogue is exactly this size" — >= keeps it true either way.
+select cmp_ok(
+  (select count(*) from public.subjects_catalog), '>=', 2::bigint,
+  'student A reads the whole subject catalogue, unfiltered'
 );
 
 select throws_ok(

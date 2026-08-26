@@ -126,12 +126,18 @@ create policy subject_aliases_delete on public.subject_aliases
 -- As in 0007: grant only the verbs that have a policy. The catalogue is
 -- select-only at the privilege level too, so "writable by nobody" is enforced
 -- twice over.
+--
+-- service_role bypasses RLS but not the GRANT system — the local CLI's role
+-- bootstrap gives it TRUNCATE/REFERENCES/TRIGGER/MAINTAIN on new tables, not
+-- SELECT/INSERT/UPDATE/DELETE, so writing the catalogue from
+-- scripts/seed-subjects-catalog.ts (§4.1, Phase 2) needs its own grant here.
 
 revoke all on public.subjects_catalog, public.student_subjects,
               public.subject_papers, public.chapters, public.subject_aliases
   from authenticated;
 
 grant select on public.subjects_catalog to authenticated;
+grant select, insert, update on public.subjects_catalog to service_role;
 
 grant select, insert, update, delete on public.student_subjects to authenticated;
 grant select, insert, update, delete on public.subject_papers   to authenticated;
