@@ -30,7 +30,7 @@ begin;
 
 set search_path = public, extensions, tests;
 
-select plan(43);
+select plan(45);
 
 -- ------------------------------------------------------------- test names ---
 
@@ -202,6 +202,23 @@ select lives_ok(
      insert into public.results (assessment_id, student_id, raw_obtained, raw_total)
      select a.id, '00000000-0000-4000-a000-000000000002', 16, 15 from a $$,
   'a bonus mark of 16/15 is recorded rather than refused'
+);
+
+-- 0015: neither generated column accepts a null, though nothing here can
+-- actually produce one — the point is that a future consumer typed against
+-- `number` rather than `number | null` stays correct.
+select is(
+  (select attnotnull from pg_attribute
+    where attrelid = 'public.results'::regclass and attname = 'percentage'),
+  true,
+  'percentage is NOT NULL'
+);
+
+select is(
+  (select attnotnull from pg_attribute
+    where attrelid = 'public.results'::regclass and attname = 'converted'),
+  true,
+  'converted is NOT NULL'
 );
 
 -- percentage and converted are GENERATED ALWAYS: a client naming them is

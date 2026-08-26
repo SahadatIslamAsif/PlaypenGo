@@ -5,7 +5,7 @@ import { approveGuardianLink, revokeGuardianLink } from "@/lib/linking/actions";
 import { createClient } from "@/lib/supabase/server";
 import { CodeCard } from "./code-card";
 
-export async function TutorHome({ userId }: { userId: string }) {
+export async function TutorSettings({ userId }: { userId: string }) {
   const supabase = await createClient();
 
   const [{ data: liveCode }, { data: pendingLinks }, { data: students }] = await Promise.all([

@@ -1,7 +1,8 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
-import { useTransition } from "react";
+import { CalendarClock, Trash2 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { CTDateSheet } from "./ct-date-sheet";
 import { deleteChapter, updateChapterStatus } from "@/lib/subjects/actions";
 import type { ChapterNode, ChapterStatus } from "@/lib/subjects/tree";
 
@@ -21,11 +22,17 @@ const READ_ONLY_LABEL: Record<ChapterStatus, string> = {
 export function ChapterRow({
   chapter,
   editable,
+  studentId,
+  studentSubjectId,
 }: {
   chapter: ChapterNode;
   editable: boolean;
+  studentId: string;
+  studentSubjectId: string;
 }) {
   const [pending, startTransition] = useTransition();
+  const [ctOpen, setCtOpen] = useState(false);
+  const activeCT = chapter.ct && chapter.ct.status !== "cancelled" ? chapter.ct : null;
 
   function setStatus(status: ChapterStatus) {
     startTransition(() => {
@@ -35,9 +42,17 @@ export function ChapterRow({
 
   if (!editable) {
     return (
-      <div className="flex items-center justify-between py-2">
+      <div className="flex items-center justify-between gap-2 py-2">
         <p className="text-sm text-body">{chapter.name}</p>
-        <span className="text-xs text-muted">{READ_ONLY_LABEL[chapter.status]}</span>
+        <div className="flex items-center gap-2">
+          {activeCT?.date ? (
+            <span className="inline-flex items-center gap-1 rounded-pill bg-tint-sage px-2 py-1 text-xs text-tint-ink">
+              <CalendarClock className="h-3 w-3" strokeWidth={1.5} />
+              {formatCTDate(activeCT.date)}
+            </span>
+          ) : null}
+          <span className="text-xs text-muted">{READ_ONLY_LABEL[chapter.status]}</span>
+        </div>
       </div>
     );
   }
@@ -46,6 +61,18 @@ export function ChapterRow({
     <div className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm text-body">{chapter.name}</p>
       <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setCtOpen(true)}
+          className={`inline-flex h-9 items-center gap-1 rounded-pill px-2.5 text-xs font-medium transition-colors ${
+            activeCT?.date
+              ? "bg-tint-sage text-tint-ink"
+              : "border border-hairline bg-surface text-muted hover:text-ink"
+          }`}
+        >
+          <CalendarClock className="h-3.5 w-3.5" strokeWidth={1.5} />
+          {activeCT?.date ? formatCTDate(activeCT.date) : "CT date"}
+        </button>
         <div className="flex overflow-hidden rounded-button border border-hairline">
           {SEGMENTS.map((seg) => (
             <button
@@ -86,6 +113,25 @@ export function ChapterRow({
           </button>
         </form>
       </div>
+
+      <CTDateSheet
+        open={ctOpen}
+        onClose={() => setCtOpen(false)}
+        studentId={studentId}
+        studentSubjectId={studentSubjectId}
+        chapterId={chapter.id}
+        chapterName={chapter.name}
+        ct={activeCT}
+      />
     </div>
   );
+}
+
+function formatCTDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }

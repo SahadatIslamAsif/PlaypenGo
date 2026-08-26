@@ -4,7 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { CodeCard } from "./code-card";
 import { RedeemCodeForm } from "./redeem-code-form";
 
-export async function StudentHome({ userId }: { userId: string }) {
+// §8: "Settings — theme, family code, notification prefs." Theme lives in the
+// header (ThemeToggle, always visible); this is the family-code and linking
+// half, moved here unchanged from what was the whole of the dashboard before
+// the shell rebuild gave Home a real dashboard to show instead.
+
+export async function StudentSettings({ userId }: { userId: string }) {
   const supabase = await createClient();
 
   const [{ data: liveCode }, { data: guardianLinks }, { data: tutorLinks }] = await Promise.all([

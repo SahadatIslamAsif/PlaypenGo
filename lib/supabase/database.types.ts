@@ -352,7 +352,7 @@ export type Database = {
       results: {
         Row: {
           assessment_id: string
-          converted: number | null
+          converted: number
           converted_scale: number
           created_at: string
           entry_mode: string
@@ -360,7 +360,7 @@ export type Database = {
           logged_at: string
           ocr_confidence: Json | null
           paper_missing: boolean
-          percentage: number | null
+          percentage: number
           raw_obtained: number
           raw_total: number
           student_id: string
@@ -368,7 +368,7 @@ export type Database = {
         }
         Insert: {
           assessment_id: string
-          converted?: number | null
+          converted?: number
           converted_scale: number
           created_at?: string
           entry_mode?: string
@@ -376,7 +376,7 @@ export type Database = {
           logged_at?: string
           ocr_confidence?: Json | null
           paper_missing?: boolean
-          percentage?: number | null
+          percentage?: number
           raw_obtained: number
           raw_total: number
           student_id: string
@@ -384,7 +384,7 @@ export type Database = {
         }
         Update: {
           assessment_id?: string
-          converted?: number | null
+          converted?: number
           converted_scale?: number
           created_at?: string
           entry_mode?: string
@@ -392,7 +392,7 @@ export type Database = {
           logged_at?: string
           ocr_confidence?: Json | null
           paper_missing?: boolean
-          percentage?: number | null
+          percentage?: number
           raw_obtained?: number
           raw_total?: number
           student_id?: string

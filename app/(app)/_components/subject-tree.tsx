@@ -7,10 +7,12 @@ export function SubjectTree({
   tree,
   editable,
   catalog,
+  studentId,
 }: {
   tree: SubjectNode[];
   editable: boolean;
   catalog: CatalogEntry[];
+  studentId: string;
 }) {
   if (tree.length === 0) {
     return (
@@ -33,7 +35,7 @@ export function SubjectTree({
   return (
     <div className="flex flex-col gap-3">
       {tree.map((subject) => (
-        <SubjectCard key={subject.id} subject={subject} editable={editable} />
+        <SubjectCard key={subject.id} subject={subject} editable={editable} studentId={studentId} />
       ))}
       {editable ? <AddSubjectForm catalog={catalog} /> : null}
     </div>

@@ -1,10 +1,18 @@
 export type ChapterStatus = "not_started" | "p80" | "p100" | "not_taught";
 
+export type ChapterCT = {
+  assessmentId: string;
+  date: string | null;
+  status: string;
+};
+
 export type ChapterNode = {
   id: string;
   name: string;
   status: ChapterStatus;
   sort_order: number;
+  /** The chapter's CT assessment, if one has been assigned (§8). */
+  ct: ChapterCT | null;
 };
 
 export type PaperNode = {
@@ -46,11 +54,28 @@ type ChapterRow = {
   sort_order: number;
 };
 
+export type CTAssessmentRow = {
+  id: string;
+  chapter_id: string | null;
+  scheduled_date: string | null;
+  status: string;
+};
+
 export function buildSubjectTree(
   subjects: SubjectRow[],
   papers: PaperRow[],
   chapters: ChapterRow[],
+  ctAssessments: CTAssessmentRow[] = [],
 ): SubjectNode[] {
+  // Multiple CT assessments could in principle exist for the same chapter
+  // over time (one cancelled, one rescheduled). The chapter row shows the
+  // last one in the array, which the caller is expected to have ordered
+  // newest-first if more than one is live for the same chapter.
+  const ctByChapter = new Map<string, CTAssessmentRow>();
+  for (const a of ctAssessments) {
+    if (a.chapter_id) ctByChapter.set(a.chapter_id, a);
+  }
+
   return subjects
     .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -65,13 +90,13 @@ export function buildSubjectTree(
           chapters: chapters
             .filter((c) => c.paper_id === paper.id)
             .sort((a, b) => a.sort_order - b.sort_order)
-            .map(toChapterNode),
+            .map((c) => toChapterNode(c, ctByChapter.get(c.id))),
         }));
 
       const subjectChapters = chapters
         .filter((c) => c.student_subject_id === subject.id && c.paper_id === null)
         .sort((a, b) => a.sort_order - b.sort_order)
-        .map(toChapterNode);
+        .map((c) => toChapterNode(c, ctByChapter.get(c.id)));
 
       return {
         id: subject.id,
@@ -84,11 +109,12 @@ export function buildSubjectTree(
     });
 }
 
-function toChapterNode(chapter: ChapterRow): ChapterNode {
+function toChapterNode(chapter: ChapterRow, ct: CTAssessmentRow | undefined): ChapterNode {
   return {
     id: chapter.id,
     name: chapter.name,
     status: chapter.status as ChapterStatus,
     sort_order: chapter.sort_order,
+    ct: ct ? { assessmentId: ct.id, date: ct.scheduled_date, status: ct.status } : null,
   };
 }

@@ -3,7 +3,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { createClient } from "@/lib/supabase/server";
 import { RedeemCodeForm } from "./redeem-code-form";
 
-export async function GuardianHome({ userId }: { userId: string }) {
+export async function GuardianSettings({ userId }: { userId: string }) {
   const supabase = await createClient();
 
   const { data: links } = await supabase
@@ -25,7 +25,7 @@ export async function GuardianHome({ userId }: { userId: string }) {
             {link.status === "pending"
               ? "Almost there. Ask your tutor to approve the link — you'll see results once they do."
               : link.status === "approved"
-                ? "You're linked. Full results are coming as more of PlaypenGo ships."
+                ? "You're linked and reading in real time."
                 : "This link was revoked. Ask for a new code to reconnect."}
           </p>
         </Card>

@@ -53,7 +53,7 @@ export default async function SubjectsPage() {
 
   const editable = profile?.role === "student";
 
-  const [{ data: subjects }, { data: papers }, { data: chapters }, { data: catalog }] =
+  const [{ data: subjects }, { data: papers }, { data: chapters }, { data: catalog }, { data: ctAssessments }] =
     await Promise.all([
       supabase
         .from("student_subjects")
@@ -73,9 +73,26 @@ export default async function SubjectsPage() {
       editable
         ? supabase.from("subjects_catalog").select("id, name, common_aliases").order("name")
         : Promise.resolve({ data: [] }),
+      // §8: "Assign / edit CT date on any chapter." Only open assessments —
+      // a chapter whose only CT was logged long ago shouldn't show a stale
+      // date chip.
+      supabase
+        .from("assessments")
+        .select("id, chapter_id, scheduled_date, status")
+        .eq("student_id", studentId)
+        .eq("type", "CT")
+        .not("chapter_id", "is", null)
+        .order("created_at", { ascending: true }),
     ]);
 
-  const tree = buildSubjectTree(subjects ?? [], papers ?? [], chapters ?? []);
+  const tree = buildSubjectTree(subjects ?? [], papers ?? [], chapters ?? [], ctAssessments ?? []);
 
-  return <SubjectTree tree={tree} editable={editable} catalog={catalog ?? []} />;
+  return (
+    <SubjectTree
+      tree={tree}
+      editable={editable}
+      catalog={catalog ?? []}
+      studentId={studentId}
+    />
+  );
 }
