@@ -140,7 +140,10 @@ select is_empty(
        join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'
         and p.prosecdef
-        and not coalesce(p.proconfig, '{}') @> array['search_path='] $$,
+        and not exists (
+              select 1 from unnest(coalesce(p.proconfig, '{}')) cfg
+               where cfg like 'search_path=%'
+            ) $$,
   'every SECURITY DEFINER function in public pins search_path to empty'
 );
 

@@ -144,7 +144,13 @@ create policy tutor_links_update_either on public.tutor_links
 -- student could repoint a tutor link at another student. The columns that decide
 -- who a link is about are therefore immutable, in the same trigger idiom 0002
 -- already uses for profiles.
-create or replace function public.links_lock_identity()
+-- One function per table, not one shared function switching on tg_table_name:
+-- NEW/OLD are bound to the calling table's rowtype, so a shared body
+-- referencing `new.tutor_id` fails to plan at all when invoked for
+-- guardian_links (no such column) — AND short-circuiting on tg_table_name
+-- does not save it, because the whole IF condition is planned as one SQL
+-- expression against the bound rowtype before it is ever evaluated.
+create or replace function public.guardian_links_lock_identity()
 returns trigger
 language plpgsql
 set search_path = ''
@@ -154,17 +160,8 @@ begin
     return new;
   end if;
 
-  if tg_table_name = 'guardian_links'
-     and (new.guardian_id is distinct from old.guardian_id
-          or new.student_id is distinct from old.student_id)
-  then
-    raise exception 'A link cannot be moved to a different person.'
-      using errcode = 'insufficient_privilege';
-  end if;
-
-  if tg_table_name = 'tutor_links'
-     and (new.tutor_id is distinct from old.tutor_id
-          or new.student_id is distinct from old.student_id)
+  if new.guardian_id is distinct from old.guardian_id
+     or new.student_id is distinct from old.student_id
   then
     raise exception 'A link cannot be moved to a different person.'
       using errcode = 'insufficient_privilege';
@@ -181,13 +178,41 @@ begin
 end;
 $fn$;
 
-create trigger links_lock_identity
-  before update on public.guardian_links
-  for each row execute function public.links_lock_identity();
+create or replace function public.tutor_links_lock_identity()
+returns trigger
+language plpgsql
+set search_path = ''
+as $fn$
+begin
+  if current_user in ('postgres', 'supabase_admin', 'service_role') then
+    return new;
+  end if;
 
-create trigger links_lock_identity
+  if new.tutor_id is distinct from old.tutor_id
+     or new.student_id is distinct from old.student_id
+  then
+    raise exception 'A link cannot be moved to a different person.'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  -- Revocation is one-way. Restoring a link goes back through a fresh code, so
+  -- consent is re-given rather than silently reinstated.
+  if old.status = 'revoked' and new.status is distinct from 'revoked' then
+    raise exception 'Ask for a new code to restore this link.'
+      using errcode = 'check_violation';
+  end if;
+
+  return new;
+end;
+$fn$;
+
+create trigger guardian_links_lock_identity
+  before update on public.guardian_links
+  for each row execute function public.guardian_links_lock_identity();
+
+create trigger tutor_links_lock_identity
   before update on public.tutor_links
-  for each row execute function public.links_lock_identity();
+  for each row execute function public.tutor_links_lock_identity();
 
 -- -------------------------------------------------------------- privileges ---
 --
