@@ -241,11 +241,23 @@ export function RoutineScreen({
                   <p className="text-xs text-muted">{formatTime(column.start_time)}</p>
                 </div>
 
+                {/* The design system's timeline shape: time gutter, tinted
+                    card, 3px accent bar down the left edge. The card is
+                    `--surface` rather than a tint fill because tints stay pale
+                    in both themes by design, and this one holds inputs, which
+                    are surface-coloured and do invert — a pale card full of
+                    dark inputs is neither theme. */}
                 <div
-                  className={`flex-1 rounded-tint p-3 ${
-                    cell.is_academic ? "bg-tint-mint" : "bg-surface-sunk"
+                  className={`relative flex-1 overflow-hidden rounded-tint border border-hairline p-3 pl-4 ${
+                    cell.is_academic ? "bg-surface" : "bg-surface-sunk"
                   }`}
                 >
+                  <span
+                    aria-hidden="true"
+                    className={`absolute inset-y-0 left-0 w-[3px] rounded-full ${
+                      cell.is_academic ? "bg-accent" : "bg-hairline"
+                    }`}
+                  />
                   <PeriodCell
                     cell={cell}
                     subjects={subjects}
@@ -303,7 +315,10 @@ export function RoutineScreen({
                   </th>
 
                   {DAYS.map((day) => (
-                    <td key={day} className="border-b border-hairline px-2 py-2">
+                    <td
+                      key={day}
+                      className="overflow-hidden border-b border-hairline px-2 py-2"
+                    >
                       <PeriodCell
                         cell={grid.cells[day][columnIndex]}
                         subjects={subjects}

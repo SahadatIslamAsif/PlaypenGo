@@ -62,7 +62,9 @@ export function PeriodCell({
   }
 
   return (
-    <div className={layout === "row" ? "flex flex-col gap-2" : "flex flex-col gap-1.5"}>
+    <div
+      className={`flex min-w-0 flex-col ${layout === "row" ? "gap-2" : "gap-1.5"}`}
+    >
       <Combobox
         value={cell.raw_text}
         items={items}
@@ -95,14 +97,16 @@ export function PeriodCell({
         />
       ) : null}
 
-      <div className="flex items-center justify-between gap-2">
+      {/* A desktop column is about 110px wide, so both halves of this row have
+          to be able to give way: the chip truncates, the toggle never does. */}
+      <div className="flex min-w-0 items-center justify-between gap-1">
         {matched ? (
-          <span className="inline-flex items-center gap-1 text-xs text-accent">
-            <Check className="h-3.5 w-3.5" strokeWidth={2} />
-            {matched.display_name}
+          <span className="inline-flex min-w-0 items-center gap-1 text-xs text-accent">
+            <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+            <span className="truncate">{matched.display_name}</span>
           </span>
         ) : unresolved ? (
-          <span className="text-xs text-muted">Not matched yet</span>
+          <span className="truncate text-xs text-muted">Not matched yet</span>
         ) : (
           <span />
         )}
@@ -119,14 +123,16 @@ export function PeriodCell({
           }}
           aria-pressed={!cell.is_academic}
           title={cell.is_academic ? "Mark as a break" : "Mark as a lesson"}
-          className={`inline-flex items-center gap-1 rounded-pill px-2 py-1 text-xs transition-colors ${
+          className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2 py-1 text-xs transition-colors ${
             cell.is_academic
               ? "text-muted hover:text-ink"
               : "bg-surface-sunk font-medium text-ink"
           }`}
         >
-          <Ban className="h-3.5 w-3.5" strokeWidth={1.5} />
-          Break
+          <Ban className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+          {/* The word is dropped in the table, where it would cost more room
+              than the subject name it sits beside. title/aria-label carry it. */}
+          <span className={layout === "cell" ? "sr-only" : undefined}>Break</span>
         </button>
       </div>
     </div>
