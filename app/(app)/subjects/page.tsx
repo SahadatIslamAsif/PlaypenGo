@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { SubjectTree } from "@/app/(app)/_components/subject-tree";
 import { buildSubjectTree } from "@/lib/subjects/tree";
+import { localDate } from "@/lib/routines/schedule";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SubjectsPage() {
@@ -103,12 +104,21 @@ export default async function SubjectsPage() {
     ctChapterLinks ?? [],
   );
 
+  const today = localDate(new Date());
+  const ctDates = new Set(
+    (ctAssessments ?? [])
+      .filter((a) => a.scheduled_date)
+      .map((a) => a.scheduled_date as string),
+  );
+
   return (
     <SubjectTree
       tree={tree}
       editable={editable}
       catalog={catalog ?? []}
       studentId={studentId}
+      today={today}
+      ctDates={ctDates}
     />
   );
 }

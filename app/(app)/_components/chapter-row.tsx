@@ -24,11 +24,15 @@ export function ChapterRow({
   editable,
   studentId,
   studentSubjectId,
+  today,
+  ctDates,
 }: {
   chapter: ChapterNode;
   editable: boolean;
   studentId: string;
   studentSubjectId: string;
+  today: string;
+  ctDates: Set<string>;
 }) {
   const [pending, startTransition] = useTransition();
   const [ctOpen, setCtOpen] = useState(false);
@@ -122,6 +126,8 @@ export function ChapterRow({
         chapterId={chapter.id}
         chapterName={chapter.name}
         ct={activeCT}
+        today={today}
+        ctDates={ctDates}
       />
     </div>
   );

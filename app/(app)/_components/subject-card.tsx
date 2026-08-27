@@ -12,10 +12,14 @@ export function SubjectCard({
   subject,
   editable,
   studentId,
+  today,
+  ctDates,
 }: {
   subject: SubjectNode;
   editable: boolean;
   studentId: string;
+  today: string;
+  ctDates: Set<string>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const totalChapters =
@@ -46,7 +50,15 @@ export function SubjectCard({
           {subject.chapters.length || (subject.papers.length === 0 && editable) ? (
             <div className="divide-y divide-hairline">
               {subject.chapters.map((chapter) => (
-                <ChapterRow key={chapter.id} chapter={chapter} editable={editable} studentId={studentId} studentSubjectId={subject.id} />
+                <ChapterRow
+                  key={chapter.id}
+                  chapter={chapter}
+                  editable={editable}
+                  studentId={studentId}
+                  studentSubjectId={subject.id}
+                  today={today}
+                  ctDates={ctDates}
+                />
               ))}
             </div>
           ) : null}
@@ -74,7 +86,15 @@ export function SubjectCard({
               </div>
               <div className="divide-y divide-hairline">
                 {paper.chapters.map((chapter) => (
-                  <ChapterRow key={chapter.id} chapter={chapter} editable={editable} studentId={studentId} studentSubjectId={subject.id} />
+                  <ChapterRow
+                    key={chapter.id}
+                    chapter={chapter}
+                    editable={editable}
+                    studentId={studentId}
+                    studentSubjectId={subject.id}
+                    today={today}
+                    ctDates={ctDates}
+                  />
                 ))}
               </div>
               {editable ? (

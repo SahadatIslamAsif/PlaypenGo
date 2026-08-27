@@ -10,8 +10,19 @@ import { useState } from "react";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
-export function MiniCalendar({ today, ctDates }: { today: string; ctDates: Set<string> }) {
-  const [y, m] = today.split("-").map(Number);
+export function MiniCalendar({
+  today,
+  selected,
+  ctDates,
+  onSelect,
+}: {
+  today: string;
+  selected?: string | null;
+  ctDates: Set<string>;
+  onSelect?: (iso: string) => void;
+}) {
+  const highlighted = selected ?? today;
+  const [y, m] = highlighted.split("-").map(Number);
   const [viewYear, setViewYear] = useState(y);
   const [viewMonth, setViewMonth] = useState(m - 1); // 0-indexed
 
@@ -74,23 +85,31 @@ export function MiniCalendar({ today, ctDates }: { today: string; ctDates: Set<s
         {cells.map((day, i) => {
           if (day === null) return <span key={i} />;
           const iso = isoOf(day);
-          const isToday = iso === today;
+          const isSelected = iso === highlighted;
           const isWeekend = (leadingBlanks + day - 1) % 7 === 5 || (leadingBlanks + day - 1) % 7 === 6;
           const hasCT = ctDates.has(iso);
+          const numeralClassName = `flex h-8 w-8 items-center justify-center rounded-full text-xs ${
+            isSelected
+              ? "bg-accent font-semibold text-shell"
+              : isWeekend
+                ? "text-muted"
+                : "text-body"
+          }`;
 
           return (
             <div key={i} className="flex flex-col items-center gap-0.5">
-              <span
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs ${
-                  isToday
-                    ? "bg-accent font-semibold text-shell"
-                    : isWeekend
-                      ? "text-muted"
-                      : "text-body"
-                }`}
-              >
-                {day}
-              </span>
+              {onSelect ? (
+                <button
+                  type="button"
+                  onClick={() => onSelect(iso)}
+                  aria-pressed={isSelected}
+                  className={`${numeralClassName} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`}
+                >
+                  {day}
+                </button>
+              ) : (
+                <span className={numeralClassName}>{day}</span>
+              )}
               <span
                 aria-hidden="true"
                 className={`h-1 w-1 rounded-full ${hasCT ? "bg-accent" : "bg-transparent"}`}

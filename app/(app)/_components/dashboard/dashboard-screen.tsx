@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { MiniCalendar } from "./mini-calendar";
+import { MiniCalendar } from "../mini-calendar";
 import { DesktopProgressChart, MobileProgressChart } from "./progress-chart";
 import { StatCardsRow } from "./stat-cards-row";
 import { TodayTimeline } from "./today-timeline";

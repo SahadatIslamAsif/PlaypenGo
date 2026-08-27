@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
 import { assignCTDate, cancelCT } from "@/lib/assessments/actions";
 import type { ChapterCT } from "@/lib/subjects/tree";
+import { MiniCalendar } from "./mini-calendar";
 
 // §8: "Assign / edit CT date on any chapter, with postpone." A bottom sheet,
 // per the copy rule and the modal rule both — "Modals are bottom sheets."
@@ -20,6 +20,8 @@ export function CTDateSheet({
   chapterId,
   chapterName,
   ct,
+  today,
+  ctDates,
 }: {
   open: boolean;
   onClose: () => void;
@@ -28,6 +30,8 @@ export function CTDateSheet({
   chapterId: string;
   chapterName: string;
   ct: ChapterCT | null;
+  today: string;
+  ctDates: Set<string>;
 }) {
   const [date, setDate] = useState(ct?.date ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -69,15 +73,10 @@ export function CTDateSheet({
       <div className="flex flex-col gap-4">
         <p className="text-sm text-muted">{chapterName}</p>
 
-        <Field label="Date" htmlFor="ct_date">
-          <input
-            id="ct_date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-11 w-full rounded-button border border-hairline bg-surface px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          />
-        </Field>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-sm font-medium text-ink">Date</p>
+          <MiniCalendar today={today} selected={date || null} ctDates={ctDates} onSelect={setDate} />
+        </div>
 
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
