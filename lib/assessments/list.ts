@@ -8,12 +8,17 @@ export type AssessmentRow = {
   id: string;
   student_subject_id: string;
   paper_id: string | null;
-  chapter_id: string | null;
   type: AssessmentType;
   status: string;
   scheduled_date: string | null;
   occurred_date: string | null;
 };
+
+// 0017: an assessment can cover several chapters (a CT often spans 2-3 in one
+// paper, one combined mark) - the link lives in its own table rather than a
+// scalar column, so every consumer joins through this row shape instead of
+// reading assessment.chapter_id directly.
+export type AssessmentChapterRow = { assessment_id: string; chapter_id: string };
 
 export type ResultRow = {
   id: string;
@@ -37,7 +42,7 @@ export type ResultListItem = {
   subjectId: string;
   subjectName: string;
   paperName: string | null;
-  chapterName: string | null;
+  chapterNames: string[];
   type: AssessmentType;
   date: string;
   rawObtained: number;
@@ -61,11 +66,19 @@ export function buildResultsList(
   subjects: SubjectRow[],
   papers: PaperRow[],
   chapters: ChapterRow[],
+  assessmentChapters: AssessmentChapterRow[] = [],
 ): ResultListItem[] {
   const assessmentById = new Map(assessments.map((a) => [a.id, a]));
   const subjectById = new Map(subjects.map((s) => [s.id, s]));
   const paperById = new Map(papers.map((p) => [p.id, p]));
   const chapterById = new Map(chapters.map((c) => [c.id, c]));
+
+  const chapterIdsByAssessment = new Map<string, string[]>();
+  for (const link of assessmentChapters) {
+    const list = chapterIdsByAssessment.get(link.assessment_id) ?? [];
+    list.push(link.chapter_id);
+    chapterIdsByAssessment.set(link.assessment_id, list);
+  }
 
   const items: ResultListItem[] = [];
 
@@ -81,9 +94,9 @@ export function buildResultsList(
       subjectId: assessment.student_subject_id,
       subjectName: subject?.display_name ?? "Unknown subject",
       paperName: assessment.paper_id ? (paperById.get(assessment.paper_id)?.name ?? null) : null,
-      chapterName: assessment.chapter_id
-        ? (chapterById.get(assessment.chapter_id)?.name ?? null)
-        : null,
+      chapterNames: (chapterIdsByAssessment.get(assessment.id) ?? [])
+        .map((id) => chapterById.get(id)?.name)
+        .filter((name): name is string => name !== undefined),
       type: assessment.type,
       date: assessment.occurred_date ?? assessment.scheduled_date ?? result.logged_at.slice(0, 10),
       rawObtained: result.raw_obtained,

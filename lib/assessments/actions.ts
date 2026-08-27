@@ -31,22 +31,39 @@ export async function assignCTDate(input: {
 }): Promise<ActionState> {
   const { supabase, userId } = await currentUser();
 
-  const { error } = input.assessmentId
-    ? await supabase
-        .from("assessments")
-        .update({ scheduled_date: input.date, status: "scheduled" })
-        .eq("id", input.assessmentId)
-    : await supabase.from("assessments").insert({
+  if (input.assessmentId) {
+    const { error } = await supabase
+      .from("assessments")
+      .update({ scheduled_date: input.date, status: "scheduled" })
+      .eq("id", input.assessmentId);
+
+    if (error) return { error: error.message };
+  } else {
+    // 0017: chapter_id no longer lives on assessments - insert the row, then
+    // link it to this chapter through the junction table, same as
+    // log_manual_result() does for a manually-entered result.
+    const { data, error } = await supabase
+      .from("assessments")
+      .insert({
         student_id: input.studentId,
         student_subject_id: input.studentSubjectId,
-        chapter_id: input.chapterId,
         type: "CT",
         status: "scheduled",
         scheduled_date: input.date,
         created_by: userId,
-      });
+      })
+      .select("id")
+      .single();
 
-  if (error) return { error: error.message };
+    if (error) return { error: error.message };
+
+    const { error: linkError } = await supabase.rpc("set_assessment_chapters", {
+      p_assessment: data.id,
+      p_chapters: [input.chapterId],
+    });
+
+    if (linkError) return { error: linkError.message };
+  }
 
   revalidatePath("/subjects");
   revalidatePath("/");

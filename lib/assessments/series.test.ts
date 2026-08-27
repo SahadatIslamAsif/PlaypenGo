@@ -17,7 +17,6 @@ function assessment(
     id,
     student_subject_id: subjectId,
     paper_id: null,
-    chapter_id: null,
     type,
     status: "logged",
     scheduled_date: type === "CT" ? date : null,

@@ -10,7 +10,7 @@
 
 import { nextClassDay } from "@/lib/routines/schedule";
 import type { RoutinePeriodRow } from "@/lib/routines/grid";
-import type { AssessmentRow } from "./list";
+import type { AssessmentChapterRow, AssessmentRow } from "./list";
 
 export type ChapterReadyRow = {
   id: string;
@@ -26,15 +26,27 @@ export type UpcomingItem = {
   subjectId: string;
   subjectName: string;
   assessmentId: string | null;
-  chapterId: string | null;
+  // 0017: an assessment can cover several chapters, so this is every chapter
+  // the CT/CWM is linked to rather than a single id.
+  chapterIds: string[];
 };
 
 /**
  * Scheduled CTs, as-is. §3.2: scheduled_date is CT-only, so this is a plain
  * filter, not a computation.
  */
-function scheduledCTs(assessments: AssessmentRow[], subjects: SubjectRow[]): UpcomingItem[] {
+function scheduledCTs(
+  assessments: AssessmentRow[],
+  subjects: SubjectRow[],
+  assessmentChapters: AssessmentChapterRow[],
+): UpcomingItem[] {
   const subjectById = new Map(subjects.map((s) => [s.id, s]));
+  const chapterIdsByAssessment = new Map<string, string[]>();
+  for (const link of assessmentChapters) {
+    const ids = chapterIdsByAssessment.get(link.assessment_id) ?? [];
+    ids.push(link.chapter_id);
+    chapterIdsByAssessment.set(link.assessment_id, ids);
+  }
 
   return assessments
     .filter((a) => a.type === "CT" && a.status === "scheduled" && a.scheduled_date)
@@ -44,7 +56,7 @@ function scheduledCTs(assessments: AssessmentRow[], subjects: SubjectRow[]): Upc
       subjectId: a.student_subject_id,
       subjectName: subjectById.get(a.student_subject_id)?.display_name ?? "Unknown subject",
       assessmentId: a.id,
-      chapterId: a.chapter_id,
+      chapterIds: chapterIdsByAssessment.get(a.id) ?? [],
     }));
 }
 
@@ -57,16 +69,21 @@ function scheduledCTs(assessments: AssessmentRow[], subjects: SubjectRow[]): Upc
 function predictedCWMs(
   chapters: ChapterReadyRow[],
   assessments: AssessmentRow[],
+  assessmentChapters: AssessmentChapterRow[],
   routinePeriods: RoutinePeriodRow[],
   subjects: SubjectRow[],
   from: string,
 ): UpcomingItem[] {
   const subjectById = new Map(subjects.map((s) => [s.id, s]));
-  const chapterHasOpenAssessment = new Set(
+  const openCwmIds = new Set(
     assessments
       .filter((a) => a.type === "CWM" && a.status !== "logged" && a.status !== "cancelled")
-      .map((a) => a.chapter_id)
-      .filter((id): id is string => id !== null),
+      .map((a) => a.id),
+  );
+  const chapterHasOpenAssessment = new Set(
+    assessmentChapters
+      .filter((link) => openCwmIds.has(link.assessment_id))
+      .map((link) => link.chapter_id),
   );
 
   const items: UpcomingItem[] = [];
@@ -84,7 +101,7 @@ function predictedCWMs(
       subjectId: chapter.student_subject_id,
       subjectName: subjectById.get(chapter.student_subject_id)?.display_name ?? "Unknown subject",
       assessmentId: null,
-      chapterId: chapter.id,
+      chapterIds: [chapter.id],
     });
   }
 
@@ -100,13 +117,14 @@ function predictedCWMs(
 export function buildUpcoming(
   assessments: AssessmentRow[],
   chapters: ChapterReadyRow[],
+  assessmentChapters: AssessmentChapterRow[],
   routinePeriods: RoutinePeriodRow[],
   subjects: SubjectRow[],
   from: string,
 ): UpcomingItem[] {
   const items = [
-    ...scheduledCTs(assessments, subjects),
-    ...predictedCWMs(chapters, assessments, routinePeriods, subjects, from),
+    ...scheduledCTs(assessments, subjects, assessmentChapters),
+    ...predictedCWMs(chapters, assessments, assessmentChapters, routinePeriods, subjects, from),
   ];
 
   return items.sort(

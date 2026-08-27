@@ -51,6 +51,7 @@ export default async function ResultsPage({
     { data: chapters },
     { data: assessments },
     { data: results },
+    { data: assessmentChapters },
   ] = await Promise.all([
     supabase
       .from("student_subjects")
@@ -69,13 +70,17 @@ export default async function ResultsPage({
       .order("sort_order"),
     supabase
       .from("assessments")
-      .select("id, student_subject_id, paper_id, chapter_id, type, status, scheduled_date, occurred_date")
+      .select("id, student_subject_id, paper_id, type, status, scheduled_date, occurred_date")
       .eq("student_id", studentId),
     supabase
       .from("results")
       .select("id, assessment_id, raw_obtained, raw_total, converted, percentage, paper_missing, entry_mode, logged_at")
       .eq("student_id", studentId)
       .order("logged_at", { ascending: false }),
+    supabase
+      .from("assessment_chapters")
+      .select("assessment_id, chapter_id")
+      .eq("student_id", studentId),
   ]);
 
   const subjectRows = subjects ?? [];
@@ -83,8 +88,16 @@ export default async function ResultsPage({
   const chapterRows = chapters ?? [];
   const assessmentRows = (assessments ?? []).map((a) => ({ ...a, type: a.type as "CT" | "CWM" }));
   const resultRows = (results ?? []).map((r) => ({ ...r, entry_mode: r.entry_mode as "ocr" | "manual" }));
+  const assessmentChapterRows = assessmentChapters ?? [];
 
-  const items = buildResultsList(resultRows, assessmentRows, subjectRows, paperRows, chapterRows);
+  const items = buildResultsList(
+    resultRows,
+    assessmentRows,
+    subjectRows,
+    paperRows,
+    chapterRows,
+    assessmentChapterRows,
+  );
   const series = toWeeklySeries(resultRows, assessmentRows, subjectRows);
 
   return (

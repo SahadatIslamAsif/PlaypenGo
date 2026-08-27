@@ -29,8 +29,8 @@ export function ResultCard({
             {item.type}
           </span>
         </div>
-        {item.chapterName ? (
-          <p className="mt-0.5 truncate text-xs text-muted">{item.chapterName}</p>
+        {item.chapterNames.length > 0 ? (
+          <p className="mt-0.5 truncate text-xs text-muted">{item.chapterNames.join(", ")}</p>
         ) : null}
         <p className="mt-1 text-xs text-muted">{formatDate(item.date)}</p>
 

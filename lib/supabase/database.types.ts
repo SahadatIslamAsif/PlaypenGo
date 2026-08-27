@@ -34,9 +34,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessment_chapters: {
+        Row: {
+          assessment_id: string
+          chapter_id: string
+          created_at: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          assessment_id: string
+          chapter_id: string
+          created_at?: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          assessment_id?: string
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_chapters_assessment_id_student_id_fkey"
+            columns: ["assessment_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id", "student_id"]
+          },
+          {
+            foreignKeyName: "assessment_chapters_chapter_id_student_id_fkey"
+            columns: ["chapter_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id", "student_id"]
+          },
+        ]
+      }
       assessments: {
         Row: {
-          chapter_id: string | null
           created_at: string
           created_by: string
           id: string
@@ -50,7 +88,6 @@ export type Database = {
           type: string
         }
         Insert: {
-          chapter_id?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -64,7 +101,6 @@ export type Database = {
           type: string
         }
         Update: {
-          chapter_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -78,13 +114,6 @@ export type Database = {
           type?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "assessments_chapter_id_student_id_fkey"
-            columns: ["chapter_id", "student_id"]
-            isOneToOne: false
-            referencedRelation: "chapters"
-            referencedColumns: ["id", "student_id"]
-          },
           {
             foreignKeyName: "assessments_created_by_fkey"
             columns: ["created_by"]
@@ -796,6 +825,10 @@ export type Database = {
       }
       my_role: { Args: never; Returns: string }
       redeem_link_code: { Args: { p_code: string }; Returns: Json }
+      set_assessment_chapters: {
+        Args: { p_assessment: string; p_chapters: string[] }
+        Returns: undefined
+      }
       shares_link_with: { Args: { p_other: string }; Returns: boolean }
       storage_owner: { Args: { p_name: string }; Returns: string }
       update_routine_period: {

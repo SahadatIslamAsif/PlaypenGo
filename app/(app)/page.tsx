@@ -50,6 +50,7 @@ export default async function HomePage({
     { data: chaptersReady },
     { data: routine },
     { data: studentProfile },
+    { data: assessmentChapters },
   ] = await Promise.all([
     supabase
       .from("student_subjects")
@@ -58,7 +59,7 @@ export default async function HomePage({
       .eq("is_active", true),
     supabase
       .from("assessments")
-      .select("id, student_subject_id, paper_id, chapter_id, type, status, scheduled_date, occurred_date")
+      .select("id, student_subject_id, paper_id, type, status, scheduled_date, occurred_date")
       .eq("student_id", studentId),
     supabase
       .from("results")
@@ -77,6 +78,10 @@ export default async function HomePage({
       .eq("is_active", true)
       .maybeSingle(),
     supabase.from("profiles").select("full_name").eq("id", studentId).single(),
+    supabase
+      .from("assessment_chapters")
+      .select("assessment_id, chapter_id")
+      .eq("student_id", studentId),
   ]);
 
   const { data: routinePeriods } = routine
@@ -102,6 +107,7 @@ export default async function HomePage({
     status: c.status as "p80" | "p100",
   }));
   const routinePeriodRows = routinePeriods ?? [];
+  const assessmentChapterRows = assessmentChapters ?? [];
 
   const today = localDate(new Date());
   const subjectNames = new Map(subjectRows.map((s) => [s.id, s.display_name]));
@@ -119,7 +125,14 @@ export default async function HomePage({
 
   const series = toWeeklySeries(resultRows, assessmentRows, subjectRows);
 
-  const upcoming = buildUpcoming(assessmentRows, chapterRows, routinePeriodRows, subjectRows, today);
+  const upcoming = buildUpcoming(
+    assessmentRows,
+    chapterRows,
+    assessmentChapterRows,
+    routinePeriodRows,
+    subjectRows,
+    today,
+  );
 
   const ctDates = new Set(
     assessmentRows

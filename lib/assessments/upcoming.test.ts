@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RoutinePeriodRow } from "@/lib/routines/grid";
-import type { AssessmentRow } from "./list";
+import type { AssessmentChapterRow, AssessmentRow } from "./list";
 import { buildUpcoming, itemsOnDate, type ChapterReadyRow, type SubjectRow } from "./upcoming";
 
 const subjects: SubjectRow[] = [
@@ -30,7 +30,6 @@ function assessment(partial: Partial<AssessmentRow> & { id: string }): Assessmen
   return {
     student_subject_id: "phy",
     paper_id: null,
-    chapter_id: null,
     type: "CT",
     status: "scheduled",
     scheduled_date: null,
@@ -56,6 +55,7 @@ describe("buildUpcoming — scheduled CTs", () => {
     const items = buildUpcoming(
       [assessment({ id: "a1", type: "CT", status: "scheduled", scheduled_date: "2026-09-01" })],
       [],
+      [],
       routine,
       subjects,
       "2026-08-30",
@@ -67,14 +67,31 @@ describe("buildUpcoming — scheduled CTs", () => {
         subjectId: "phy",
         subjectName: "Physics",
         assessmentId: "a1",
-        chapterId: null,
+        chapterIds: [],
       },
     ]);
+  });
+
+  it("lists every chapter a multi-chapter CT covers", () => {
+    const links: AssessmentChapterRow[] = [
+      { assessment_id: "a1", chapter_id: "c1" },
+      { assessment_id: "a1", chapter_id: "c2" },
+    ];
+    const items = buildUpcoming(
+      [assessment({ id: "a1", type: "CT", status: "scheduled", scheduled_date: "2026-09-01" })],
+      [],
+      links,
+      routine,
+      subjects,
+      "2026-08-30",
+    );
+    expect(items[0].chapterIds).toEqual(["c1", "c2"]);
   });
 
   it("ignores a CT that has already been logged - it is history, not upcoming", () => {
     const items = buildUpcoming(
       [assessment({ id: "a1", type: "CT", status: "logged", scheduled_date: "2026-09-01" })],
+      [],
       [],
       routine,
       subjects,
@@ -86,6 +103,7 @@ describe("buildUpcoming — scheduled CTs", () => {
   it("ignores a cancelled CT", () => {
     const items = buildUpcoming(
       [assessment({ id: "a1", type: "CT", status: "cancelled", scheduled_date: "2026-09-01" })],
+      [],
       [],
       routine,
       subjects,
@@ -100,6 +118,7 @@ describe("buildUpcoming — predicted CWMs, §7.3", () => {
     const items = buildUpcoming(
       [],
       [chapter({ id: "c1", student_subject_id: "chem", status: "p100" })],
+      [],
       routine,
       subjects,
       "2026-08-30", // Sunday; Chemistry's next class is Monday
@@ -111,7 +130,7 @@ describe("buildUpcoming — predicted CWMs, §7.3", () => {
         subjectId: "chem",
         subjectName: "Chemistry",
         assessmentId: null,
-        chapterId: "c1",
+        chapterIds: ["c1"],
       },
     ]);
   });
@@ -120,6 +139,7 @@ describe("buildUpcoming — predicted CWMs, §7.3", () => {
     const items = buildUpcoming(
       [],
       [chapter({ id: "c1", student_subject_id: "chem", status: "p80" })],
+      [],
       routine,
       subjects,
       "2026-08-30",
@@ -134,6 +154,7 @@ describe("buildUpcoming — predicted CWMs, §7.3", () => {
         chapter({ id: "c1", status: "not_started" }),
         chapter({ id: "c2", status: "not_taught" }),
       ],
+      [],
       routine,
       subjects,
       "2026-08-30",
@@ -147,6 +168,7 @@ describe("buildUpcoming — predicted CWMs, §7.3", () => {
     const items = buildUpcoming(
       [],
       [chapter({ id: "c1", student_subject_id: "unrouted", status: "p100" })],
+      [],
       routine,
       subjects,
       "2026-08-30",
@@ -164,10 +186,10 @@ describe("buildUpcoming — predicted CWMs, §7.3", () => {
           type: "CWM",
           status: "occurred",
           student_subject_id: "chem",
-          chapter_id: "c1",
         }),
       ],
       [chapter({ id: "c1", student_subject_id: "chem", status: "p100" })],
+      [{ assessment_id: "a1", chapter_id: "c1" }],
       routine,
       subjects,
       "2026-08-30",
@@ -183,10 +205,10 @@ describe("buildUpcoming — predicted CWMs, §7.3", () => {
           type: "CWM",
           status: "logged",
           student_subject_id: "chem",
-          chapter_id: "c1",
         }),
       ],
       [chapter({ id: "c1", student_subject_id: "chem", status: "p100" })],
+      [{ assessment_id: "a1", chapter_id: "c1" }],
       routine,
       subjects,
       "2026-08-30",
@@ -200,6 +222,7 @@ describe("buildUpcoming — merge order", () => {
     const items = buildUpcoming(
       [assessment({ id: "a1", type: "CT", status: "scheduled", scheduled_date: "2026-09-02" })],
       [chapter({ id: "c1", student_subject_id: "chem", status: "p100" })],
+      [],
       routine,
       subjects,
       "2026-08-30", // predicted Chemistry lands 2026-08-31, before the CT
@@ -216,7 +239,7 @@ describe("buildUpcoming — merge order", () => {
         scheduled_date: "2026-09-01",
       }),
     );
-    expect(buildUpcoming(many, [], routine, subjects, "2026-08-30")).toHaveLength(8);
+    expect(buildUpcoming(many, [], [], routine, subjects, "2026-08-30")).toHaveLength(8);
   });
 });
 
@@ -227,6 +250,7 @@ describe("itemsOnDate", () => {
         assessment({ id: "a1", type: "CT", status: "scheduled", scheduled_date: "2026-09-01" }),
         assessment({ id: "a2", type: "CT", status: "scheduled", scheduled_date: "2026-09-02" }),
       ],
+      [],
       [],
       routine,
       subjects,

@@ -53,8 +53,14 @@ export default async function SubjectsPage() {
 
   const editable = profile?.role === "student";
 
-  const [{ data: subjects }, { data: papers }, { data: chapters }, { data: catalog }, { data: ctAssessments }] =
-    await Promise.all([
+  const [
+    { data: subjects },
+    { data: papers },
+    { data: chapters },
+    { data: catalog },
+    { data: ctAssessments },
+    { data: ctChapterLinks },
+  ] = await Promise.all([
       supabase
         .from("student_subjects")
         .select("id, display_name, teacher_name, sort_order")
@@ -73,19 +79,29 @@ export default async function SubjectsPage() {
       editable
         ? supabase.from("subjects_catalog").select("id, name, common_aliases").order("name")
         : Promise.resolve({ data: [] }),
-      // §8: "Assign / edit CT date on any chapter." Only open assessments —
-      // a chapter whose only CT was logged long ago shouldn't show a stale
-      // date chip.
+      // §8: "Assign / edit CT date on any chapter." Every CT for the
+      // student — buildSubjectTree() matches against ctChapterLinks below,
+      // so an assessment with no chapter link simply attaches to nothing.
       supabase
         .from("assessments")
-        .select("id, chapter_id, scheduled_date, status")
+        .select("id, scheduled_date, status")
         .eq("student_id", studentId)
         .eq("type", "CT")
-        .not("chapter_id", "is", null)
         .order("created_at", { ascending: true }),
+      // 0017: which chapters each CT covers now lives in its own table.
+      supabase
+        .from("assessment_chapters")
+        .select("assessment_id, chapter_id")
+        .eq("student_id", studentId),
     ]);
 
-  const tree = buildSubjectTree(subjects ?? [], papers ?? [], chapters ?? [], ctAssessments ?? []);
+  const tree = buildSubjectTree(
+    subjects ?? [],
+    papers ?? [],
+    chapters ?? [],
+    ctAssessments ?? [],
+    ctChapterLinks ?? [],
+  );
 
   return (
     <SubjectTree

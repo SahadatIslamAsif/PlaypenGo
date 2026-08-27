@@ -19,18 +19,36 @@ describe("buildSubjectTree — CT dates", () => {
   });
 
   it("attaches the assessment id and date to the matching chapter only", () => {
-    const [subject] = buildSubjectTree(subjects, [], chapters, [
-      { id: "a1", chapter_id: "c1", scheduled_date: "2026-09-10", status: "scheduled" },
-    ]);
-    expect(subject.chapters[0].ct).toEqual({ assessmentId: "a1", date: "2026-09-10", status: "scheduled" });
+    const [subject] = buildSubjectTree(
+      subjects,
+      [],
+      chapters,
+      [{ id: "a1", scheduled_date: "2026-09-10", status: "scheduled" }],
+      [{ assessment_id: "a1", chapter_id: "c1" }],
+    );
+    expect(subject.chapters[0].ct).toEqual({
+      assessmentId: "a1",
+      date: "2026-09-10",
+      status: "scheduled",
+      chapterIds: ["c1"],
+    });
     expect(subject.chapters[1].ct).toBeNull();
   });
 
   it("carries the assessment's status through - e.g. cancelled", () => {
-    const [subject] = buildSubjectTree(subjects, [], chapters, [
-      { id: "a1", chapter_id: "c1", scheduled_date: null, status: "cancelled" },
-    ]);
-    expect(subject.chapters[0].ct).toEqual({ assessmentId: "a1", date: null, status: "cancelled" });
+    const [subject] = buildSubjectTree(
+      subjects,
+      [],
+      chapters,
+      [{ id: "a1", scheduled_date: null, status: "cancelled" }],
+      [{ assessment_id: "a1", chapter_id: "c1" }],
+    );
+    expect(subject.chapters[0].ct).toEqual({
+      assessmentId: "a1",
+      date: null,
+      status: "cancelled",
+      chapterIds: ["c1"],
+    });
   });
 
   it("attaches CT dates to chapters under a paper too", () => {
@@ -38,16 +56,44 @@ describe("buildSubjectTree — CT dates", () => {
     const paperChapters = [
       { id: "c3", student_subject_id: "phy", paper_id: "p1", name: "2.1", status: "p80", sort_order: 0 },
     ];
-    const [subject] = buildSubjectTree(subjects, papers, paperChapters, [
-      { id: "a2", chapter_id: "c3", scheduled_date: "2026-09-15", status: "scheduled" },
-    ]);
-    expect(subject.papers[0].chapters[0].ct).toEqual({ assessmentId: "a2", date: "2026-09-15", status: "scheduled" });
+    const [subject] = buildSubjectTree(
+      subjects,
+      papers,
+      paperChapters,
+      [{ id: "a2", scheduled_date: "2026-09-15", status: "scheduled" }],
+      [{ assessment_id: "a2", chapter_id: "c3" }],
+    );
+    expect(subject.papers[0].chapters[0].ct).toEqual({
+      assessmentId: "a2",
+      date: "2026-09-15",
+      status: "scheduled",
+      chapterIds: ["c3"],
+    });
   });
 
-  it("ignores an assessment with no chapter_id", () => {
-    const [subject] = buildSubjectTree(subjects, [], chapters, [
-      { id: "a3", chapter_id: null, scheduled_date: "2026-09-10", status: "scheduled" },
-    ]);
+  it("ignores an assessment with no chapter link at all", () => {
+    const [subject] = buildSubjectTree(
+      subjects,
+      [],
+      chapters,
+      [{ id: "a3", scheduled_date: "2026-09-10", status: "scheduled" }],
+      [],
+    );
     expect(subject.chapters.every((c) => c.ct === null)).toBe(true);
+  });
+
+  it("0017: a CT spanning several chapters lists every one of them on each chapter's ct", () => {
+    const [subject] = buildSubjectTree(
+      subjects,
+      [],
+      chapters,
+      [{ id: "a1", scheduled_date: "2026-09-10", status: "scheduled" }],
+      [
+        { assessment_id: "a1", chapter_id: "c1" },
+        { assessment_id: "a1", chapter_id: "c2" },
+      ],
+    );
+    expect(subject.chapters[0].ct?.chapterIds).toEqual(["c1", "c2"]);
+    expect(subject.chapters[1].ct?.chapterIds).toEqual(["c1", "c2"]);
   });
 });

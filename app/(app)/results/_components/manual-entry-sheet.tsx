@@ -99,7 +99,7 @@ export function ManualEntrySheet({
       const result = await saveManualResult(studentId, {
         student_subject_id: subjectId,
         paper_id: paperId || null,
-        chapter_id: chapterId || null,
+        chapter_ids: chapterId ? [chapterId] : [],
         type,
         occurred_date: date,
         raw_obtained: Number(obtained),
