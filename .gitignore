@@ -44,3 +44,6 @@ next-env.d.ts
 # supabase CLI local state
 supabase/.branches
 supabase/.temp
+
+# dev-only Gemini parse cache (§5.3) - keyed by image bytes, never for prod use
+/.cache/
