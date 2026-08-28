@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ScanScreen } from "./_components/scan-screen";
+import { ScanScreen, type JobStatus, type SubmittedJob } from "./_components/scan-screen";
 import { createClient } from "@/lib/supabase/server";
 
 // Scanning is a student-only action (§3.3, §5.3: "Scanning is a
@@ -24,10 +24,24 @@ export default async function ScanPage() {
 
   if ((profile?.role ?? "student") !== "student") redirect("/");
 
-  // No data fetch this pass - no scan_jobs query yet, so CLAUDE.md's
-  // "skeleton-load, don't block the screen" rule has nothing to apply to.
-  // That query (resuming a review left mid-parse, SPEC.md's "resumable
-  // from scan_jobs if the tab is evicted") lands with the upload-wiring
-  // pass; that's what will actually need a loading skeleton.
-  return <ScanScreen studentId={user.id} />;
+  // Every job this student has that isn't done yet - so a reload picks up
+  // where it left off instead of losing every in-flight job to React
+  // state. 'uploading' here can only mean the tab that started it died
+  // before finishing (scan-screen.tsx never leaves a live upload at that
+  // status); the screen surfaces it with a Discard action rather than
+  // silently going quiet for up to 7 days until the TTL sweep gets to it.
+  const { data: jobs } = await supabase
+    .from("scan_jobs")
+    .select("id, status, error")
+    .eq("student_id", user.id)
+    .in("status", ["uploading", "parsing", "review"])
+    .order("created_at");
+
+  const initialJobs: SubmittedJob[] = (jobs ?? []).map((job) => ({
+    id: job.id,
+    status: job.status as JobStatus,
+    error: job.error,
+  }));
+
+  return <ScanScreen studentId={user.id} initialJobs={initialJobs} />;
 }

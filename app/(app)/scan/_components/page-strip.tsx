@@ -1,23 +1,14 @@
 "use client";
 
-import type { CapturedPage } from "./scan-screen";
+import { paperNumbers, type CapturedPage } from "./pages";
 
 // Presentational only - holds no state of its own. "Same paper / new
 // paper" is authored per page, never derived from a neighbour (SPEC.md
 // §5.3: "The thumbnail strip in the review screen carries a same paper /
 // new paper toggle. It is the grouping control, not decoration."), so
 // paper numbers here are a pure scan of that per-page boolean, not
-// anything stored separately.
-
-function paperNumbers(pages: CapturedPage[]): number[] {
-  const numbers: number[] = [];
-  let current = 1;
-  pages.forEach((page, i) => {
-    if (i > 0 && !page.sameAsPrevious) current += 1;
-    numbers.push(current);
-  });
-  return numbers;
-}
+// anything stored separately. paperNumbers() lives in pages.ts so
+// scan-screen.tsx's actual upload grouping and this display always agree.
 
 export function PageStrip({
   pages,
