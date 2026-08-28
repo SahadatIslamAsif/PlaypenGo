@@ -33,15 +33,21 @@ const RESULTS: NavItem = { href: "/results", label: "Results", icon: LineChart }
 const ROUTINE: NavItem = { href: "/routine", label: "Routine", icon: CalendarClock };
 const SETTINGS: NavItem = { href: "/settings", label: "Settings", icon: Settings };
 
-// Not in SIDEBAR_NAV or BOTTOM_TABS below - it's rendered as the raised
-// --ink circle overlapping the bottom bar (bottom-tabs.tsx), student only,
-// never a same-weight list entry alongside Home/Subjects/etc.
+// A normal list entry in SIDEBAR_NAV (≥640, every role reachable there gets
+// every destination) - but never in BOTTOM_TABS below, where it's instead
+// rendered as the raised --ink circle overlapping the bar, student only.
 export const SCAN: NavItem = { href: "/scan", label: "Scan", icon: ScanLine };
 
 // The full nav for the sidebar (≥1024) and icon rail (640-1023) — every
-// destination a role can reach, Settings included.
+// destination a role can reach, Settings included. Scan included too: the
+// mobile bottom bar's raised circle is a phone-specific affordance, not the
+// only way in — a laptop student with the khata beside them needs a way to
+// reach /scan without typing the URL, and capture="environment" just
+// degrades to a normal file picker there (CLAUDE.md's rule is "camera, not
+// a file picker" for the phone flow specifically; a desktop file picker is
+// the ordinary, expected control).
 export const SIDEBAR_NAV: Record<Role, NavItem[]> = {
-  student: [HOME, SUBJECTS, RESULTS, ROUTINE, SETTINGS],
+  student: [HOME, SUBJECTS, SCAN, RESULTS, ROUTINE, SETTINGS],
   // CLAUDE.md's target for the tutor is "Students · Results · More", but the
   // roster is Phase 7 and nothing may point at a page that does not exist.
   // Until it does, Home stands in for it: the routes below already accept a
