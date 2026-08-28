@@ -23,6 +23,15 @@ import { BOTTOM_TABS, MORE_ITEM, MORE_SHEET_ITEMS, SCAN } from "./nav-items";
 // instead of navigating directly — nav-items.ts's MORE_ITEM already
 // anticipated this ("once a second secondary destination exists it becomes
 // a sheet instead of a direct link").
+//
+// The circle has no border. It sits over two different backgrounds at once
+// (the mint wash above, the white tab bar below) — no single border colour
+// works for both, and a border was never the right tool anyway: "Separation
+// comes from the wash behind white cards, never from heavy borders"
+// (CLAUDE.md). Its shadow is deliberately stronger than the shared
+// shadow-elevated token (a card's own shadow-elevated would be too faint
+// here, this is a raised control, not a resting card) — deepen this value
+// again if it ever needs more lift; never reintroduce a border.
 
 export function BottomTabs({ role }: { role: "student" | "tutor" }) {
   const pathname = usePathname();
@@ -79,7 +88,7 @@ export function BottomTabs({ role }: { role: "student" | "tutor" }) {
           <Link
             href={SCAN.href}
             aria-label="Scan a paper"
-            className="absolute left-1/2 top-0 z-40 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-surface bg-ink text-shell shadow-elevated transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="absolute left-1/2 top-0 z-40 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-ink text-shell shadow-[0_8px_20px_rgba(14,26,20,0.22)] transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <SCAN.icon className="h-6 w-6" strokeWidth={1.5} />
           </Link>
