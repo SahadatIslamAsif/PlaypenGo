@@ -1,0 +1,61 @@
+{
+  "images": [
+    "env-management-2026-08-18-p1.jpeg",
+    "env-management-2026-08-18-p2.jpeg"
+  ],
+  "seededChapterNames": ["Chapter 2 Natural Resources"],
+  "expected": {
+    "pages": [
+      {
+        "page": 1,
+        "has_header": true,
+        "printed_question_text": false,
+        "header_subject_raw": "Env. Management",
+        "header_date_raw": "18/8/26"
+      },
+      {
+        "page": 2,
+        "has_header": false,
+        "printed_question_text": false,
+        "header_subject_raw": null,
+        "header_date_raw": null
+      }
+    ],
+    "header": {
+      "student_name": "Rakib Hasan Chowdhury",
+      "class": "8",
+      "section": "Willow",
+      "subject_raw": "Env. Management",
+      "date_raw": "18/8/26",
+      "date": "2026-08-18",
+      "total_marks_field": 15,
+      "obtained_marks_field": null,
+      "obtained_field_struck_through": true
+    },
+    "mark_candidates": [
+      {
+        "page": 1,
+        "value_obtained": 15,
+        "value_total": 15,
+        "style": "ellipse",
+        "location": "mid-page right"
+      },
+      {
+        "page": 2,
+        "value_obtained": 6,
+        "value_total": null,
+        "style": "ellipse",
+        "location": "bottom right"
+      }
+    ],
+    "body_type_hint": "CWM",
+    "topic_line": null,
+    "inferred_chapter": "Chapter 2 Natural Resources",
+    "inferred_from": "questions on crystallisation, sedimentary rock, chemical weathering and the rock cycle",
+    "confidence": {
+      "subject": 0,
+      "marks": 0,
+      "chapter": 0
+    }
+  }
+}

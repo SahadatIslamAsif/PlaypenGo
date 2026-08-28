@@ -1,0 +1,46 @@
+{
+  "images": ["english-lit-2026-08-17.jpeg"],
+  "seededChapterNames": [
+    "A Zoo in My Luggage: A Novel in Advance (with Chap 1)"
+  ],
+  "expected": {
+    "pages": [
+      {
+        "page": 1,
+        "has_header": true,
+        "printed_question_text": false,
+        "header_subject_raw": "English Literature",
+        "header_date_raw": "17/8/26"
+      }
+    ],
+    "header": {
+      "student_name": "Rakib Hasan Chowdhury",
+      "class": "8",
+      "section": "Willow",
+      "subject_raw": "English Literature",
+      "date_raw": "17/8/26",
+      "date": "2026-08-17",
+      "total_marks_field": null,
+      "obtained_marks_field": 10,
+      "obtained_field_struck_through": false
+    },
+    "mark_candidates": [
+      {
+        "page": 1,
+        "value_obtained": 10,
+        "value_total": 10,
+        "style": "ellipse",
+        "location": "top left"
+      }
+    ],
+    "body_type_hint": "CWM",
+    "topic_line": "Zoo in my Luggage",
+    "inferred_chapter": "A Zoo in My Luggage: A Novel in Advance (with Chap 1)",
+    "inferred_from": "topic line names the novel",
+    "confidence": {
+      "subject": 0,
+      "marks": 0,
+      "chapter": 0
+    }
+  }
+}
