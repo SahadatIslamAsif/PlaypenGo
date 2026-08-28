@@ -14,6 +14,7 @@ import {
   Home,
   LineChart,
   type LucideIcon,
+  MoreHorizontal,
   ScanLine,
   Settings,
 } from "lucide-react";
@@ -52,18 +53,33 @@ export const SIDEBAR_NAV: Record<Role, NavItem[]> = {
 };
 
 // The bottom tab bar (<640) for student and tutor. CLAUDE.md puts a raised
-// Scan circle in the middle of the STUDENT's bar only — "The tutor has no
-// scan affordance anywhere" — so it is not an item in either list here;
-// bottom-tabs.tsx renders it over the bar for the student and nothing for the
-// tutor. "More" points at Settings for now; once a second secondary
-// destination exists it becomes a sheet instead of a direct link, but there
-// is nothing else to put in a sheet today.
+// Scan circle "centre" over the STUDENT's bar, overlapping no tab, with the
+// bar itself capped at five items total (four tabs plus the circle) — "Home
+// · Subjects · Scan · Results · More". That only centres cleanly with an
+// EVEN number of real tabs either side of the gap the circle sits in, so
+// Routine drops out of the student's own four tabs here and moves behind
+// "More" alongside Settings (see MORE_SHEET_ITEMS) — bottom-tabs.tsx turns
+// "More" into a sheet trigger for the student for exactly this reason, now
+// that there are two destinations behind it rather than one.
+//
+// The tutor has no Scan circle to centre around ("the tutor has no scan
+// affordance anywhere"), so their bar keeps Routine as its own tab and
+// "More" stays a direct link to Settings, same as before.
 export const BOTTOM_TABS: Record<"student" | "tutor", NavItem[]> = {
-  student: [HOME, SUBJECTS, RESULTS, ROUTINE],
+  student: [HOME, SUBJECTS, RESULTS],
   tutor: [HOME, RESULTS, ROUTINE],
 };
 
-export const MORE_ITEM = SETTINGS;
+// The bottom bar's last slot. Its href only matters for the tutor, who
+// still gets a direct link to Settings; for the student, bottom-tabs.tsx
+// renders this slot as a sheet trigger instead and ignores the href,
+// opening MORE_SHEET_ITEMS.
+export const MORE_ITEM: NavItem = { href: "/settings", label: "More", icon: MoreHorizontal };
+
+// What's behind the student's "More" sheet - Routine (dropped from
+// BOTTOM_TABS.student above) plus Settings, the same pair SIDEBAR_NAV
+// already reaches at ≥640.
+export const MORE_SHEET_ITEMS: NavItem[] = [ROUTINE, SETTINGS];
 
 // The guardian's mobile segmented control (<640): "no tab bar — three views".
 // Subjects (syllabus coverage) is folded into the Home dashboard's content
