@@ -46,12 +46,25 @@ function cleanMark(value: unknown): number | null {
   return value;
 }
 
+// The parse schema constrains style to exactly "ellipse" | "boxed" |
+// "underlined" | "plain" (lib/scans/parse/schema.ts), but an enum on the
+// wire is a request to the model, not a guarantee — belt and braces: the
+// ladder folds a handful of synonyms the model could still emit ("circle",
+// "circled", "oval") onto "ellipse" rather than trusting the enum alone.
+// Silently skipping a real page-1 mark because of a word choice is a wrong
+// answer with no error; normalising here is cheap insurance against that.
+const ELLIPSE_STYLE_ALIASES = new Set(["ellipse", "circle", "circled", "oval"]);
+
+function isEllipseStyle(style: string): boolean {
+  return ELLIPSE_STYLE_ALIASES.has(style.trim().toLowerCase());
+}
+
 /** Every ellipse-style candidate on page 1, in the order the parse reported
  * them. Rule 4: "Multiple ellipses on page 1 are rare. Take the first,
  * surface the rest as candidates" — this is what the ladder consumes the
  * first of, and what the review screen shows the rest of. */
 export function page1Ellipses(candidates: MarkCandidate[]): MarkCandidate[] {
-  return candidates.filter((c) => c.page === 1 && c.style === "ellipse");
+  return candidates.filter((c) => c.page === 1 && isEllipseStyle(c.style));
 }
 
 /** Candidates on any page after the first — reported for display, never

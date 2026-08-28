@@ -96,6 +96,22 @@ describe("resolveMarks", () => {
     });
   });
 
+  it("treats a 'circled' style as an ellipse synonym - belt and braces against the model ignoring the enum", () => {
+    const candidates: MarkCandidate[] = [
+      { page: 1, valueObtained: 12, valueTotal: 15, style: "circled", location: "top right" },
+    ];
+    const header: HeaderMarks = {
+      totalMarksField: 20,
+      obtainedMarksField: 9,
+      obtainedFieldStruckThrough: false,
+    };
+    expect(resolveMarks(candidates, header)).toEqual({
+      obtained: 12,
+      total: 15,
+      source: "ellipse",
+    });
+  });
+
   it("ignores a page-1 candidate that isn't ellipse-styled - a tick or question number", () => {
     const candidates: MarkCandidate[] = [
       { page: 1, valueObtained: 3, valueTotal: null, style: "tick", location: "margin" },
