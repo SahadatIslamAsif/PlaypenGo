@@ -13,6 +13,13 @@
 // Three fields are deliberately never scored - see the SKIPPED_FIELDS
 // block below for why each one is excluded rather than just "currently
 // failing."
+//
+// Two more are scored but reported under "known limitation" rather than as
+// an ordinary FAIL - see the KNOWN_LIMITATIONS block below. They still
+// count toward the fail total and the exit code; the separate heading is
+// only so a run's OUTPUT makes it obvious at a glance which failures are
+// new (worth investigating) versus already-understood and tracked
+// elsewhere (docs/SPEC.md §10, item 8).
 
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -39,6 +46,10 @@ type FieldResult = {
   expected?: unknown;
   actual?: unknown;
   reason?: string;
+  /** Set only for a scored field whose failure mode is already understood
+   * and tracked - see the KNOWN_LIMITATIONS block. Absent for an ordinary
+   * value comparison. */
+  category?: "known_limitation";
 };
 
 function deepEqual(a: unknown, b: unknown): boolean {
@@ -51,6 +62,40 @@ function scored(path: string, actual: unknown, expected: unknown): FieldResult {
 
 function skipped(path: string, reason: string): FieldResult {
   return { path, status: "skip", reason };
+}
+
+// ---------------------------------------------------------------------------
+// Fields that are scored - a mismatch is real and counts toward the exit
+// code - but reported as a "known limitation" rather than an ordinary FAIL,
+// because the failure mode itself is already understood, not something a
+// mismatch here is telling us anything new about:
+//
+//   * header.student_name - namesMatch (lib/scans/match.ts) is token-subset
+//     per §5.3 ("Use token-subset matching, not whole-string edit
+//     distance"), which is correct for its real job: catching a genuinely
+//     different name on a paper. It does not, and structurally cannot,
+//     tolerate a spelling VARIANT within a token - "Hassan" and "Hasan"
+//     are two different tokens, not a subset relationship, so a run that
+//     transcribes the same handwriting differently each time will fail
+//     here even though it found the right student. Loosening namesMatch
+//     itself would weaken the real §5.3 warning this same function drives
+//     for guardians/tutors reviewing a scan - not done. Tracked as
+//     docs/SPEC.md §10 item 8.
+//   * header.obtained_field_struck_through - the model currently reads a
+//     struck-through "Obtained marks" digit as an empty blank rather than
+//     as struck, on every run against the Env. Management fixture so far.
+//     A prompt-iteration item once there are more papers to check against,
+//     not a fixture bug - the golden records what is actually on the
+//     paper, and is never edited to match the parse.
+// ---------------------------------------------------------------------------
+
+function knownLimitation(
+  path: string,
+  actual: unknown,
+  expected: unknown,
+  reason: string,
+): FieldResult {
+  return { ...scored(path, actual, expected), category: "known_limitation", reason };
 }
 
 // ---------------------------------------------------------------------------
@@ -75,13 +120,12 @@ function compareHeader(actual: RawHeader, expected: RawHeader): FieldResult[] {
   const nameResult: FieldResult =
     actual.student_name === null || expected.student_name === null
       ? scored("header.student_name", actual.student_name, expected.student_name)
-      : {
-          path: "header.student_name",
-          status: namesMatch(actual.student_name, expected.student_name) ? "pass" : "fail",
-          expected: expected.student_name,
-          actual: actual.student_name,
-          reason: "compared via namesMatch (token-subset), not string equality - see lib/scans/match.ts",
-        };
+      : knownLimitation(
+          "header.student_name",
+          actual.student_name,
+          expected.student_name,
+          "compared via namesMatch (token-subset, lib/scans/match.ts), not string equality - but a spelling variant within one token (e.g. Hassan/Hasan) still fails, since that's a different token, not a subset. See KNOWN_LIMITATIONS above.",
+        );
 
   return [
     nameResult,
@@ -92,15 +136,11 @@ function compareHeader(actual: RawHeader, expected: RawHeader): FieldResult[] {
     scored("header.date", actual.date, expected.date),
     scored("header.total_marks_field", actual.total_marks_field, expected.total_marks_field),
     scored("header.obtained_marks_field", actual.obtained_marks_field, expected.obtained_marks_field),
-    // Deliberately not special-cased even though it is expected to fail on
-    // the Env. Management fixture - the golden records what is actually on
-    // the paper (a struck-through blank), and the parse currently reads
-    // that blank as empty rather than struck. That mismatch is real
-    // parser behaviour worth tracking, not a fixture bug to paper over.
-    scored(
+    knownLimitation(
       "header.obtained_field_struck_through",
       actual.obtained_field_struck_through,
       expected.obtained_field_struck_through,
+      "the model currently reads a struck-through 'Obtained marks' digit as an empty blank rather than as struck. Golden records what's actually on the paper - never edited to match the parse. See KNOWN_LIMITATIONS above.",
     ),
   ];
 }
@@ -193,6 +233,8 @@ async function main() {
 
   let totalPass = 0;
   let totalFail = 0;
+  let totalNewFail = 0;
+  let totalKnownFail = 0;
   let totalSkip = 0;
 
   for (const goldenFile of goldenFiles) {
@@ -209,19 +251,37 @@ async function main() {
     const pass = results.filter((r) => r.status === "pass").length;
     const fail = results.filter((r) => r.status === "fail");
     const skip = results.filter((r) => r.status === "skip").length;
+    // Known-limitation fields still count toward pass/fail/exit code - the
+    // split below is purely which heading a fail prints under, so a run's
+    // NEW failures (worth investigating) aren't buried under ones already
+    // tracked in KNOWN_LIMITATIONS / docs/SPEC.md §10 item 8.
+    const newFail = fail.filter((f) => f.category !== "known_limitation");
+    const knownFail = fail.filter((f) => f.category === "known_limitation");
     totalPass += pass;
     totalFail += fail.length;
+    totalNewFail += newFail.length;
+    totalKnownFail += knownFail.length;
     totalSkip += skip;
 
-    console.log(`\n${fixtureName}: ${pass} pass, ${fail.length} fail, ${skip} skip`);
-    for (const f of fail) {
+    console.log(
+      `\n${fixtureName}: ${pass} pass, ${fail.length} fail (${newFail.length} new, ${knownFail.length} known limitation), ${skip} skip`,
+    );
+    for (const f of newFail) {
       console.log(`  FAIL ${f.path}`);
+      console.log(`       expected: ${JSON.stringify(f.expected)}`);
+      console.log(`       actual:   ${JSON.stringify(f.actual)}`);
+    }
+    for (const f of knownFail) {
+      console.log(`  KNOWN LIMITATION ${f.path}`);
+      console.log(`       ${f.reason}`);
       console.log(`       expected: ${JSON.stringify(f.expected)}`);
       console.log(`       actual:   ${JSON.stringify(f.actual)}`);
     }
   }
 
-  console.log(`\nTotal: ${totalPass} pass, ${totalFail} fail, ${totalSkip} skip`);
+  console.log(
+    `\nTotal: ${totalPass} pass, ${totalFail} fail (${totalNewFail} new, ${totalKnownFail} known limitation), ${totalSkip} skip`,
+  );
   process.exit(totalFail > 0 ? 1 : 0);
 }
 

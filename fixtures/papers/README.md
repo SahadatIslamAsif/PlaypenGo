@@ -60,39 +60,51 @@ came from the new prompt, not a stale cached response keyed to the old one.
 Without it, a fixture whose exact images + prompt are already cached (see
 `lib/scans/parse/cache.ts`) costs no API call.
 
-## What's scored, what's skipped, and why
+## What's scored, what's skipped, what's a known limitation, and why
 
-Most fields are compared for exact equality against the golden. Three kinds
-of field are deliberately never scored — see
-`scripts/check-paper-fixtures.ts`'s `SKIPPED_FIELDS` comment for the
-authoritative version:
+Most fields are compared for exact equality against the golden. Two
+categories of field are treated differently — both are documented in
+`scripts/check-paper-fixtures.ts` itself (`SKIPPED_FIELDS` and
+`KNOWN_LIMITATIONS` comments); this section is the summary, not the
+authoritative version.
+
+**Skipped — never scored, not even counted as a failure:**
+
+- **`inferred_chapter` / `inferred_from`**. Both current fixtures were run
+  with a single-member `seededChapterNames`, so the model had exactly one
+  option to return — a pass here would only confirm the enum had one entry,
+  not that inference works. `inferred_chapter` goes back into scoring once a
+  real syllabus is seeded and the enum has enough members to actually get
+  wrong. `inferred_from` stays out permanently: it's prose evidence for a
+  human to sanity-check (§5.3), never a value with one correct wording.
+- **`confidence.*`**, permanently. §5.3: "the model's self-reported
+  confidence is uncalibrated ... use it only to decide highlighting, never
+  to decide a value." Scoring it against a golden would treat it as exactly
+  the kind of value the spec says it isn't.
+
+**Known limitation — scored, a mismatch still counts toward the fail total
+and the exit code, but reported under its own heading because the failure
+mode is already understood rather than being new signal:**
 
 - **`header.student_name`** is compared via `namesMatch` (token-subset,
-  `lib/scans/match.ts`), not string equality. The model's own transcription
-  varies run to run (`"Hassan"` vs `"Hasan"` on the same paper) the same
-  way real OCR does — what matters is whether it resolves to the right
-  student, not the exact spelling.
-- **`inferred_chapter` / `inferred_from`** are skipped. Both current
-  fixtures were run with a single-member `seededChapterNames`, so the model
-  had exactly one option to return — a pass here would only confirm the
-  enum had one entry, not that inference works. `inferred_chapter` goes back
-  into scoring once a real syllabus is seeded and the enum has enough
-  members to actually get wrong. `inferred_from` stays out permanently: it's
-  prose evidence for a human to sanity-check (§5.3), never a value with one
-  correct wording.
-- **`confidence.*`** is skipped permanently. §5.3: "the model's
-  self-reported confidence is uncalibrated ... use it only to decide
-  highlighting, never to decide a value." Scoring it against a golden would
-  treat it as exactly the kind of value the spec says it isn't.
+  `lib/scans/match.ts`) — not string equality, but not fuzzy spelling
+  either. Token-subset is correct for what `namesMatch` actually has to do
+  in production: catch a genuinely *different* name on a scanned paper. It
+  cannot, and structurally never will, tolerate a spelling *variant* within
+  one token — `"Hassan"` and `"Hasan"` off the same handwriting are two
+  different tokens, not a subset relationship, so a run that transcribes
+  the name differently each time fails here even on the right paper.
+  Loosening `namesMatch` itself would weaken the real §5.3 name-mismatch
+  warning this same function drives for guardians and tutors reviewing a
+  scan, so that's not done — see `docs/SPEC.md` §10, item 8.
+- **`header.obtained_field_struck_through`** currently fails on the Env.
+  Management fixture because the model reads the struck `Obtained marks`
+  digit as an empty blank rather than as struck. A prompt-iteration item
+  for when there are more papers to check against.
 
-A scored field failing is real signal, including one that's expected to keep
-failing for a while — e.g. `header.obtained_field_struck_through` currently
-fails on the Env. Management fixture because the model reads the struck
-`Obtained marks` digit as an empty blank rather than as struck. That's a
-prompt-iteration item for when there are more papers to iterate against, not
-a reason to edit the golden to match the parse. **A golden is never edited
-to make a failing run pass — only a genuine correction to what's actually on
-the paper justifies changing one.**
+In both cases: **a golden is never edited to make a failing run pass — only
+a genuine correction to what's actually on the paper justifies changing
+one.**
 
 ## Why the images aren't in git
 
