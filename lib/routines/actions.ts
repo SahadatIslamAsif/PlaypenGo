@@ -23,9 +23,10 @@ export type CommitResult = {
 
 /**
  * The whole-grid path. Both authorization and the write live in
- * commit_routine_grid() (migration 0011) — this only carries the payload
- * across, so a tutor committing on a student's behalf takes exactly the same
- * route as the student, with the same check.
+ * commit_routine_grid() (migration 0011, guard narrowed by 0019) — this only
+ * carries the payload across. The check is inside the function because it is
+ * SECURITY DEFINER: no policy ever sees these writes, so nothing else could
+ * hold the line.
  */
 export async function commitRoutineGrid(
   studentId: string,
@@ -79,7 +80,7 @@ export async function updateRoutinePeriod(
 
 // A photo is attached by committing the grid with its `image_path` set, not by
 // a separate update. `routines` is student-only at the table level, so a direct
-// UPDATE would silently write nothing for a tutor — the RLS predicate filters
-// rather than errors, which is the failure mode 0009's header warns about. The
-// commit is idempotent, so re-sending an unchanged grid to record a new photo
-// costs nothing.
+// UPDATE from anyone else would silently write nothing — the RLS predicate
+// filters rather than errors, which is the failure mode 0009's header warns
+// about. The commit is idempotent, so re-sending an unchanged grid to record a
+// new photo costs nothing.

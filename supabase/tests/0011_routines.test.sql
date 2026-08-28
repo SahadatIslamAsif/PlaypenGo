@@ -9,9 +9,10 @@
 --
 -- It also pins the two things 0010 decided that no other file records:
 --
---   * writes are the student's alone at the table level, tutor included. The
---     tutor's path is 0011's definer RPC, covered by 0012's suite. If a future
---     migration ever widens routine_periods_insert, the tutor assertion here
+--   * writes are the student's alone at the table level, tutor included. Since
+--     0019 that is true of the definer RPCs as well, covered by 0012's suite —
+--     the routine is the student's end to end. If a future migration ever
+--     widens routine_periods_insert, the tutor assertion here
 --     fails and says so.
 --   * the storage bucket is private and its policies shipped with it. 0006's
 --     header made that a rule; this is the assertion behind the rule.
@@ -269,10 +270,10 @@ select is(
 -- 6. The tutor reads, but cannot write at the table level
 -- ===========================================================================
 --
--- §3.3 grants tutors INSERT/UPDATE on assessments/results/result_images and
--- nothing else. Their routine write path is 0011's definer RPC, which 0012
--- covers. These assertions are what would fail if that RPC were ever "simplified"
--- into a widened table policy.
+-- §3.3 grants the tutor UPDATE on `results` and nothing else. The routine was
+-- once reachable through 0011's definer RPC; 0019 closed that too, so these
+-- assertions now say the same thing at both levels. They are what would fail
+-- if either were ever "simplified" into a widened table policy.
 
 select tests.login_as(tests.uid('tutor'));
 

@@ -2,12 +2,18 @@
 -- 0011 migration)
 --
 -- 0011's suite proves routines/routine_periods stay student-only at the table
--- level. This file proves the two definer functions that are the tutor's only
--- way past that, on the same terms 0010's suite holds commit_syllabus_tree()
--- to: each does its own authorization check rather than widening a policy,
--- neither duplicates rows when the same grid is committed twice, and the
--- alias capture §5.1 asks for actually happens — including for a tutor, who
--- cannot write subject_aliases through the table policy at all.
+-- level. This file proves the two definer functions that reach past that, on
+-- the same terms 0010's suite holds commit_syllabus_tree() to: each does its
+-- own authorization check rather than widening a policy, neither duplicates
+-- rows when the same grid is committed twice, and the alias capture §5.1 asks
+-- for actually happens — including into subject_aliases, which the caller
+-- could not write through the table policy at this moment.
+--
+-- Until 0019 these functions were the tutor's way in as well. They are not any
+-- more: §4.2 names the tutor as a syllabus uploader and §5.1 names nobody for
+-- the routine, so the routine falls to §3.3's default. The tutor denials below
+-- are that rule, asserted at the only place it is enforced — inside the
+-- function body, since a definer function never meets a policy.
 --
 -- The grid below is deliberately small and shaped like the real sample: a
 -- Sunday with Physics under a short form ('Phy'), the vertical BREAK column of
@@ -23,7 +29,7 @@ begin;
 
 set search_path = public, extensions, tests;
 
-select plan(38);
+select plan(40);
 
 -- ------------------------------------------------------------- test names ---
 
@@ -116,6 +122,15 @@ select throws_ok(
   'the tutor cannot commit for a student they do not tutor'
 );
 
+-- And no longer for one they do. The link was never what authorized this; it
+-- only ever narrowed a permission §3.3 has since withdrawn entirely.
+select throws_ok(
+  $$ select public.commit_routine_grid(
+       '00000000-0000-4000-a000-000000000002', '{"periods":[]}'::jsonb, '2026-2027') $$,
+  '42501', NULL,
+  'nor for student A, whom they do tutor - 0019 closed the routine to them'
+);
+
 -- ===========================================================================
 -- 2. Input validation, as an authorized caller
 -- ===========================================================================
@@ -167,10 +182,10 @@ select throws_ok(
 );
 
 -- ===========================================================================
--- 3. The tutor commits student A's routine
+-- 3. Student A commits their own routine
 -- ===========================================================================
 
-select tests.login_as(tests.uid('tutor'));
+select tests.login_as(tests.uid('student_a'));
 
 select is(
   public.commit_routine_grid(tests.uid('student_a'), tests.routine_v1(), '2026-2027'),
@@ -180,7 +195,7 @@ select is(
     'periods_removed',   0,
     'aliases_captured',  1
   ),
-  'the tutor commits student A''s routine and gets back the right counts'
+  'the student commits their routine and gets back the right counts'
 );
 
 select is(
@@ -206,9 +221,10 @@ select is(
 -- 4. Alias capture — §5.1's "write the pair into subject_aliases"
 -- ===========================================================================
 --
--- This is the assertion that matters most for the tutor. subject_aliases_insert
--- in 0008 requires student_id = auth.uid(), so the row below is one the tutor
--- could not have written through the table policy at any point.
+-- subject_aliases_insert in 0008 requires student_id = auth.uid() AND a
+-- 'student' role, so the row below is written from inside the definer
+-- function rather than by the caller — which is the whole reason the capture
+-- lives in there and not in the client.
 
 select is(
   (select student_subject_id from public.subject_aliases
@@ -325,8 +341,10 @@ select is(
   'the first routine was retired, not deleted — old predictions stay readable'
 );
 
--- The client names the routine id, so it could name someone else's.
-select tests.login_as(tests.uid('tutor'));
+-- The client names the routine id, so it could name someone else's. The guard
+-- passes here — student B is committing as student B — and the explicit
+-- ownership check on the routine id is what has to catch it.
+select tests.login_as(tests.uid('student_b'));
 
 select throws_ok(
   $$ select public.commit_routine_grid(
@@ -334,7 +352,7 @@ select throws_ok(
        '{"routine_id":"00000000-0000-4000-9000-000000000002","periods":[]}'::jsonb,
        '2026-2027') $$,
   '42501', NULL,
-  'the tutor cannot commit student A''s routine id under student B — checked explicitly'
+  'student B cannot commit student A''s routine id under their own — checked explicitly'
 );
 
 -- ===========================================================================
@@ -360,12 +378,23 @@ select throws_ok(
 
 select tests.login_as(tests.uid('tutor'));
 
+select throws_ok(
+  $$ select public.update_routine_period(
+       (select id from public.routine_periods
+         where routine_id = '00000000-0000-4000-9000-000000000001' and period_no = 1),
+       '{"teacher_raw":"Shafiur"}'::jsonb) $$,
+  '42501', NULL,
+  'nor can the tutor - the single-cell path is closed to them on the same terms'
+);
+
+select tests.login_as(tests.uid('student_a'));
+
 select lives_ok(
   $$ select public.update_routine_period(
        (select id from public.routine_periods
          where routine_id = '00000000-0000-4000-9000-000000000001' and period_no = 1),
        '{"teacher_raw":"Shafiur"}'::jsonb) $$,
-  'the tutor corrects a teacher''s spelling mid-session'
+  'the student corrects a teacher''s spelling - §5.1 rule 4''s near-duplicate'
 );
 
 -- The whole point of reading p_patch key by key: an absent key is "I did not
@@ -407,7 +436,7 @@ select lives_ok(
        (select id from public.routine_periods
          where routine_id = '00000000-0000-4000-9000-000000000001' and period_no = 1),
        '{"student_subject_id":"00000000-0000-4000-b000-000000000002"}'::jsonb) $$,
-  'the tutor re-points the "Phy" cell at Maths'
+  'the student re-points the "Phy" cell at Maths'
 );
 
 select is(

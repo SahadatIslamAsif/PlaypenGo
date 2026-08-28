@@ -184,9 +184,9 @@ export function RoutineScreen({
           editable={editable}
           onUploaded={(path) => {
             setImagePath(path);
-            // Recording the photo means committing the grid with it — routines
-            // is student-only at the table level, so a direct update would
-            // write nothing at all for a tutor.
+            // Recording the photo means committing the grid with it —
+            // routines is student-only at the table level, so a direct update
+            // would write nothing at all and report success.
             commitAll(grid, path);
           }}
         />

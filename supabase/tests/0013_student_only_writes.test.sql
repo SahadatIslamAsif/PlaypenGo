@@ -18,7 +18,8 @@
 --
 -- The last section is the regression half. A role check in a policy is an easy
 -- way to lock out the people who are supposed to be writing, so the student's
--- own path and both tutor RPC paths are re-asserted here rather than trusted.
+-- own path is re-asserted here rather than trusted — alongside the one definer
+-- path the tutor keeps, commit_syllabus_tree(), which §4.2 names them for.
 --
 -- Run against a local stack:
 --
@@ -29,7 +30,7 @@ begin;
 
 set search_path = public, extensions, tests;
 
-select plan(30);
+select plan(31);
 
 -- ------------------------------------------------------------- test names ---
 
@@ -237,8 +238,14 @@ select throws_ok(
 );
 
 -- ===========================================================================
--- 6. The tutor is unchanged — still no table write, still a working RPC
+-- 6. The tutor: no table write, one sanctioned RPC, and no routine
 -- ===========================================================================
+--
+-- 0019 split what used to be one story into two, along a line the spec draws
+-- rather than one this suite invented. §4.2 names the tutor as a syllabus
+-- uploader, so commit_syllabus_tree() still admits them. Nothing in §5.1 says
+-- who photographs the routine, so §3.3's "No INSERT anywhere" governs and the
+-- routine RPCs no longer do.
 
 select tests.login_as(tests.uid('tutor'));
 
@@ -267,38 +274,59 @@ select lives_ok(
   'the tutor can still commit a syllabus tree through the definer RPC'
 );
 
+-- The routine half, now denied. The guard is inside the function body, so the
+-- refusal is the function's own exception rather than a policy's 42501 — and
+-- it must be raised, not filtered, because a definer function that quietly
+-- wrote nothing would look like success to the caller.
+select throws_ok(
+  $$ select public.commit_routine_grid(
+       '00000000-0000-4000-a000-000000000002',
+       '{"periods":[{"day_of_week":0,"period_no":1,"raw_text":"Phy",
+         "student_subject_id":"00000000-0000-4000-b000-000000000001"}]}'::jsonb,
+       '2026-2027') $$,
+  '42501', NULL,
+  'the tutor can no longer commit a routine - §3.3, and §5.1 never named them'
+);
+
+select is(
+  (select count(*) from public.routine_periods
+    where student_id = tests.uid('student_a') and raw_text = 'Phy'),
+  0::bigint,
+  'and nothing was written on the way to that refusal'
+);
+
+-- The student's own path through the same function, so the denial above is
+-- shown to be about the caller and not a broken RPC.
+select tests.login_as(tests.uid('student_a'));
+
 select lives_ok(
   $$ select public.commit_routine_grid(
        '00000000-0000-4000-a000-000000000002',
        '{"periods":[{"day_of_week":0,"period_no":1,"raw_text":"Phy",
          "student_subject_id":"00000000-0000-4000-b000-000000000001"}]}'::jsonb,
        '2026-2027') $$,
-  'the tutor can still commit a routine through the definer RPC'
-);
-
-select is(
-  (select count(*) from public.routine_periods
-    where student_id = tests.uid('student_a') and raw_text = 'Phy'),
-  1::bigint,
-  'and the period it wrote is really there'
+  'the student commits their own routine through the same RPC'
 );
 
 -- Alias capture runs inside that RPC and writes subject_aliases — a table 0012
--- just narrowed to students. The definer path must still reach it.
+-- narrowed to students. The definer path must still reach it.
 select is(
   (select source from public.subject_aliases
     where student_id = tests.uid('student_a') and lower(alias_text) = 'phy'),
   'routine',
-  'and §5.1''s alias capture still wrote, though the tutor is not a student'
+  'and §5.1''s alias capture still wrote from inside the definer function'
 );
 
-select lives_ok(
+select tests.login_as(tests.uid('tutor'));
+
+select throws_ok(
   $$ select public.update_routine_period(
        (select id from public.routine_periods
          where student_id = '00000000-0000-4000-a000-000000000002'
            and raw_text = 'Phy' limit 1),
        '{"teacher_raw":"Shafiul"}'::jsonb) $$,
-  'the tutor can still edit a single cell through the definer RPC'
+  '42501', NULL,
+  'nor correct a single cell of it'
 );
 
 -- ===========================================================================

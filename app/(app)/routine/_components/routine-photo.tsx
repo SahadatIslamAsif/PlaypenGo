@@ -111,7 +111,7 @@ export function RoutinePhoto({
           type="file"
           accept="image/*"
           // Straight to the camera on a phone, per the mobile scan rules — the
-          // tutor is photographing a routine on the wall, not picking a file.
+          // student is photographing a routine on the wall, not picking a file.
           capture="environment"
           className="hidden"
           onChange={(e) => {

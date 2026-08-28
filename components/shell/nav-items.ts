@@ -35,17 +35,23 @@ const SETTINGS: NavItem = { href: "/settings", label: "Settings", icon: Settings
 // destination a role can reach, Settings included.
 export const SIDEBAR_NAV: Record<Role, NavItem[]> = {
   student: [HOME, SUBJECTS, RESULTS, ROUTINE, SETTINGS],
-  // Tutor has no roster page yet — that is Phase 7. Nothing points at
-  // "Students" until it exists; the routes below already accept a
-  // `?student=` param and default to the first linked student.
+  // CLAUDE.md's target for the tutor is "Students · Results · More", but the
+  // roster is Phase 7 and nothing may point at a page that does not exist.
+  // Until it does, Home stands in for it: the routes below already accept a
+  // `?student=` param and default to the first linked student. Routine is
+  // read-only for a tutor since 0019, but reading it is most of why they open
+  // it — knowing what the student has tomorrow.
   tutor: [HOME, RESULTS, ROUTINE, SETTINGS],
   guardian: [HOME, SUBJECTS, RESULTS, ROUTINE, SETTINGS],
 };
 
-// The bottom tab bar (<640) for student and tutor. §8's spec lists a Scan
-// slot in the middle — that ships in Phase 5. "More" points at Settings for
-// now; once a second secondary destination exists it becomes a sheet instead
-// of a direct link, but there is nothing else to put in a sheet today.
+// The bottom tab bar (<640) for student and tutor. CLAUDE.md puts a raised
+// Scan circle in the middle of the STUDENT's bar only — "The tutor has no
+// scan affordance anywhere" — so it is not an item in either list here;
+// bottom-tabs.tsx renders it over the bar for the student and nothing for the
+// tutor. "More" points at Settings for now; once a second secondary
+// destination exists it becomes a sheet instead of a direct link, but there
+// is nothing else to put in a sheet today.
 export const BOTTOM_TABS: Record<"student" | "tutor", NavItem[]> = {
   student: [HOME, SUBJECTS, RESULTS, ROUTINE],
   tutor: [HOME, RESULTS, ROUTINE],

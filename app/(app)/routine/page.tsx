@@ -48,10 +48,11 @@ export default async function RoutinePage({
     );
   }
 
-  // §3.3 makes the routine writable by the student, and 0011's RPC extends that
-  // to an approved tutor. A guardian gets the same screen with every control
-  // removed rather than a redirect — the design system's guardian rule.
-  const editable = role === "student" || role === "tutor";
+  // §3.3 makes the routine the student's, at the table level and — since
+  // 0019 — through the definer RPCs too. A tutor and a guardian both get this
+  // screen with every control removed rather than a redirect; that is the
+  // design system's guardian rule, and it now covers the tutor as well.
+  const editable = role === "student";
 
   const [{ data: routine }, { data: subjects }, { data: aliases }] = await Promise.all([
     supabase
