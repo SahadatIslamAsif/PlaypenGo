@@ -1,7 +1,13 @@
-// The one Gemini call for §5.3's exam-paper parse. 1-5 local image paths,
-// all pages in one request in page order - "so the model can see that page 3
-// belongs to page 1's header" (§5.3) - structured output only, never a text
-// response parsed after the fact (CLAUDE.md).
+// The one Gemini call for §5.3's exam-paper parse. 1-5 already-loaded
+// images, all pages in one request in page order - "so the model can see
+// that page 3 belongs to page 1's header" (§5.3) - structured output only,
+// never a text response parsed after the fact (CLAUDE.md).
+//
+// parsePaper() takes bytes (ImageInput[]), not paths - the CLI scripts load
+// local files first via loadLocalImages(), and the parse route (called with
+// pages pulled from Supabase Storage, no local filesystem there) builds the
+// same shape from a signed download instead. One parse entry point either
+// way, not two that could drift.
 //
 // Model ID and API key come from GEMINI_MODEL / GEMINI_API_KEY, read once
 // and guarded the same way scripts/seed-subjects-catalog.ts guards its own
@@ -22,7 +28,7 @@ const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
   webp: "image/webp",
 };
 
-function mimeTypeFor(imagePath: string): string {
+export function mimeTypeFor(imagePath: string): string {
   const extension = path.extname(imagePath).slice(1).toLowerCase();
   const mimeType = MIME_TYPE_BY_EXTENSION[extension];
   if (!mimeType) {
@@ -76,6 +82,25 @@ export type ParsePaperOptions = {
   forceLive?: boolean;
 };
 
+/** One page's bytes plus the MIME type Gemini needs alongside them. */
+export type ImageInput = { buffer: Buffer; mimeType: string };
+
+/**
+ * Reads 1-5 local files into ImageInput[] - the CLI's own boundary
+ * (scripts/parse-paper.ts, scripts/check-paper-fixtures.ts). parsePaper
+ * itself takes already-loaded bytes, not paths, so the same function serves
+ * a route handler pulling pages from Supabase Storage (no local filesystem
+ * there) without a second, divergent parse entry point.
+ */
+export async function loadLocalImages(imagePaths: string[]): Promise<ImageInput[]> {
+  return Promise.all(
+    imagePaths.map(async (imagePath) => ({
+      buffer: await readFile(imagePath),
+      mimeType: mimeTypeFor(imagePath),
+    })),
+  );
+}
+
 // A 503 from this endpoint is Google's own "high demand, try again" - not a
 // bad request and not a billing problem (a paid-only model 404s instead, it
 // never 503s). Retried once, after a short pause, before this surfaces as a
@@ -119,16 +144,16 @@ function requireEnv(): { apiKey: string; model: string } {
  * screen is what stands between this and a `results` row.
  */
 export async function parsePaper(
-  imagePaths: string[],
+  images: ImageInput[],
   options: ParsePaperOptions = {},
 ): Promise<RawParse> {
-  if (imagePaths.length < 1 || imagePaths.length > 5) {
-    throw new Error(`Expected 1-5 images per §5.3, got ${imagePaths.length}.`);
+  if (images.length < 1 || images.length > 5) {
+    throw new Error(`Expected 1-5 images per §5.3, got ${images.length}.`);
   }
 
   const seededChapterNames = options.seededChapterNames ?? [];
   const prompt = buildPaperParsePrompt(seededChapterNames);
-  const imageBuffers = await Promise.all(imagePaths.map((imagePath) => readFile(imagePath)));
+  const imageBuffers = images.map((image) => image.buffer);
 
   if (!options.forceLive) {
     const cached = await readParseCache(imageBuffers, prompt);
@@ -138,10 +163,10 @@ export async function parsePaper(
   const { apiKey, model } = requireEnv();
   const ai = new GoogleGenAI({ apiKey });
 
-  const imageParts = imagePaths.map((imagePath, i) => ({
+  const imageParts = images.map((image) => ({
     inlineData: {
-      mimeType: mimeTypeFor(imagePath),
-      data: imageBuffers[i].toString("base64"),
+      mimeType: image.mimeType,
+      data: image.buffer.toString("base64"),
     },
   }));
 

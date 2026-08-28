@@ -23,7 +23,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { parsePaper } from "@/lib/scans/parse/client";
+import { loadLocalImages, parsePaper } from "@/lib/scans/parse/client";
 import type { RawHeader, RawMarkCandidate, RawPage, RawParse } from "@/lib/scans/parse/schema";
 import { namesMatch } from "@/lib/scans/match";
 
@@ -248,8 +248,9 @@ async function main() {
     const fixtureName = goldenFile.replace(/\.expected\.json$/, "");
     const fixture = await loadFixture(goldenFile);
     const imagePaths = fixture.images.map((name) => path.join(FIXTURES_DIR, name));
+    const images = await loadLocalImages(imagePaths);
 
-    const actual = await parsePaper(imagePaths, {
+    const actual = await parsePaper(images, {
       seededChapterNames: fixture.seededChapterNames,
       forceLive,
     });

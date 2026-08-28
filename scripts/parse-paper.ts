@@ -15,7 +15,7 @@
 // inferred_chapter can only be null in that case and that null is a script
 // artifact, not a finding about the parse.
 
-import { parsePaper } from "@/lib/scans/parse/client";
+import { loadLocalImages, parsePaper } from "@/lib/scans/parse/client";
 
 function parseChaptersArg(args: string[]): string[] {
   const prefix = "--chapters=";
@@ -41,7 +41,8 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await parsePaper(imagePaths, { forceLive, seededChapterNames });
+  const images = await loadLocalImages(imagePaths);
+  const result = await parsePaper(images, { forceLive, seededChapterNames });
   console.log(JSON.stringify(result, null, 2));
 }
 
