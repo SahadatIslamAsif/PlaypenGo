@@ -31,7 +31,7 @@ begin;
 
 set search_path = public, extensions, tests;
 
-select plan(51);
+select plan(52);
 
 -- ------------------------------------------------------------- test names ---
 
@@ -318,14 +318,29 @@ select throws_ok(
   'scheduled_date is CT-only - the spec''s own annotation, enforced'
 );
 
+-- 0020 replaced predicted_for_date with the window pair, and the pairing
+-- constraint is what keeps a close explainable: a time with no reason is a
+-- window nobody can say why the app stopped watching.
 select throws_ok(
   $$ insert into public.assessments
-       (student_id, student_subject_id, type, predicted_for_date, created_by)
+       (student_id, student_subject_id, type, window_closed_at, created_by)
      values ('00000000-0000-4000-a000-000000000002',
-             '00000000-0000-4000-b000-000000000001', 'CT', current_date,
+             '00000000-0000-4000-b000-000000000001', 'CWM', now(),
              '00000000-0000-4000-a000-000000000002') $$,
   '23514', NULL,
-  'predicted_for_date is CWM-only'
+  'a closed window must carry a reason - §7.5 has no anonymous close'
+);
+
+select throws_ok(
+  $$ insert into public.assessments
+       (student_id, student_subject_id, type,
+        window_closed_at, window_close_reason, created_by)
+     values ('00000000-0000-4000-a000-000000000002',
+             '00000000-0000-4000-b000-000000000001', 'CWM',
+             now(), 'chapter_finished',
+             '00000000-0000-4000-a000-000000000002') $$,
+  '23514', NULL,
+  'and the reason must be one of §7.5''s four, not an invented fifth'
 );
 
 select throws_ok(

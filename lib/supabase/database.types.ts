@@ -80,12 +80,13 @@ export type Database = {
           id: string
           occurred_date: string | null
           paper_id: string | null
-          predicted_for_date: string | null
           scheduled_date: string | null
           status: string
           student_id: string
           student_subject_id: string
           type: string
+          window_close_reason: string | null
+          window_closed_at: string | null
         }
         Insert: {
           created_at?: string
@@ -93,12 +94,13 @@ export type Database = {
           id?: string
           occurred_date?: string | null
           paper_id?: string | null
-          predicted_for_date?: string | null
           scheduled_date?: string | null
           status?: string
           student_id: string
           student_subject_id: string
           type: string
+          window_close_reason?: string | null
+          window_closed_at?: string | null
         }
         Update: {
           created_at?: string
@@ -106,12 +108,13 @@ export type Database = {
           id?: string
           occurred_date?: string | null
           paper_id?: string | null
-          predicted_for_date?: string | null
           scheduled_date?: string | null
           status?: string
           student_id?: string
           student_subject_id?: string
           type?: string
+          window_close_reason?: string | null
+          window_closed_at?: string | null
         }
         Relationships: [
           {
