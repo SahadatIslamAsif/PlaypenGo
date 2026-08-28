@@ -22,6 +22,7 @@ No service workers or web push in v1. Email is the only delivery channel.
 ## Hard rules
 
 - **Guardians are read-only.** No insert, update, or delete policy on any table, and no edit affordance in their UI.
+- **Only the student uploads papers.** Tutors get `SELECT` on linked students plus `UPDATE` on `results` — enough to correct a wrong mark beside the student, never to create one. No insert anywhere, no delete, no access to scan jobs.
 - **RLS on every table**, storage buckets private, signed URLs only. This holds a minor's grades and photos of their exam scripts.
 - Service-role key is used only inside the cron route. Never reaches the client.
 - **One email per person per day, maximum.** Everything folds into the 8:00 PM digest. Nothing sends when all sections are empty.
@@ -37,8 +38,8 @@ Phases 1–4 (auth, subject tree, routine, manual assessments) ship before any G
 
 ## Free-tier limits to design around
 
-- Vercel Hobby functions die at 10s — chunk the nightly job, never one long loop.
-- Gemini free tier is rate-limited per minute — queue batch scans, never fire in parallel.
+- Vercel Hobby functions default to 10s, raisable to 60s with `maxDuration` (check Vercel's current limits page). A single 3-image Gemini call fits in 60s; the nightly digest still gets chunked, never one long loop.
+- Gemini free tier is rate-limited per minute — one call per assessment, sequential, never parallel.
 - Supabase free storage is 1 GB — compress images client-side before upload.
 - `email_log` has a unique constraint on `(recipient, date, type)`. Cron double-firing must be harmless.
 
@@ -114,17 +115,17 @@ Build every screen mobile-first. Two of the three roles reach this app primarily
 
 ## Mobile
 
-The phone is not a shrunken desktop here. The tutor scans papers on a phone mid-session, and the guardian arrives from an email link and may never see a desktop at all.
+The phone is not a shrunken desktop here. The student scans papers on a phone the moment a khata comes back, and the guardian arrives from an email link and may never see a desktop at all.
 
 **Shell dissolves.** No rounded container on mobile — cards sit directly on the wash with a 12px gutter, radius 20. Greeting drops to 20/600, card padding 16, captions 13.
 
 **Bottom tab bar**, max five items, 56px tall plus `env(safe-area-inset-bottom)`. Icons at 20 with a 11px label; active item takes `--accent`, not the black pill (a filled pill is too heavy at this size).
 
 - Student: Home · Subjects · **Scan** · Results · More
-- Tutor: Students · **Scan** · Results · More
+- Tutor: Students · Results · More
 - Guardian: no tab bar — three views behind a top segmented control
 
-Scan sits centre as a raised `--ink` circle overlapping the bar. It is the one action that must never take more than one tap to reach.
+Scan sits centre as a raised `--ink` circle overlapping the bar, **on the student's bar only**. It is the one action that must never take more than one tap to reach. The tutor has no scan affordance anywhere.
 
 **Stack order is not the desktop order.** On a phone, what matters is what happens tomorrow — put it above the fold and push analytics down:
 
@@ -135,11 +136,12 @@ Scan sits centre as a raised `--ink` circle overlapping the bar. It is the one a
 
 **Charts must be rebuilt, not resized.** Twelve weeks × several subjects is unreadable at 375px. On mobile, show one subject at a time behind a horizontally scrolling chip selector, last 6 weeks only. Tooltips are tap-to-pin, never hover. If a chart still feels cramped, fall back to a list of subject rows with a sparkline and the latest mark — a legible list beats an illegible graph.
 
-**Tables become cards.** The tutor roster is one card per student: name, tomorrow's load, unlogged count, trend arrow. No horizontal scrolling of table rows, ever.
+**Tables become cards.** The tutor roster is one card per student: name, tomorrow's load, unlogged count, trend arrow. The unlogged count is the point of the screen — the tutor's job here is noticing what the student hasn't logged, not logging it himself. No horizontal scrolling of table rows, ever.
 
 **Scan flow, phone-first:**
 - Capture straight from the camera (`accept="image/*"` with `capture="environment"`), not a file picker.
-- Multi-page is capture → thumbnail strip → *Add page* → *Done*.
+- Multi-page is capture → thumbnail strip → *Add page* → *Done*. Pages stay in capture order; that order is what groups them, so the strip carries a *same paper / new paper* toggle.
+- A parse in review lives in `scan_jobs`, not React state. Launching the camera can evict the tab; the review screen must be resumable.
 - The review screen cannot be side-by-side. Thumbnail strip pinned at the top (tap to open full-screen zoom), fields scrolling beneath, a sticky *Save result* bar at the bottom that stays above the keyboard.
 - Mark fields use `inputmode="numeric"`. Low-confidence fields keep their highlight and scroll into view when focused.
 
@@ -159,7 +161,7 @@ Scan sits centre as a raised `--ink` circle overlapping the bar. It is the one a
 
 - **Student dashboard** — three stat cards (latest three results as percentage rings) · "Your progress" line chart, percentage by week, one series per subject · "Coming up" list. Right rail: month calendar with CT dates marked, then today's periods as the timeline.
 - **Guardian** — identical shell, every action control removed. Reading only.
-- **Tutor** — table-first. The student roster replaces the stat cards; the batch scan queue is the primary action.
+- **Tutor** — table-first. The student roster replaces the stat cards, sorted by unlogged count. Primary actions are drilling into a student and correcting a logged result.
 
 ## Copy
 
