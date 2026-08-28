@@ -98,7 +98,7 @@ export function ScanScreen({ studentId: _studentId }: { studentId: string }) {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={capturing || atCap}
-          className="inline-flex h-11 items-center gap-2 rounded-button border border-hairline bg-surface px-3 text-sm font-medium text-ink transition-colors hover:bg-surface-sunk disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-button border border-hairline bg-surface px-3 text-sm font-medium text-ink transition-colors hover:bg-surface-sunk disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-36"
         >
           <Camera className="h-4 w-4" strokeWidth={1.5} />
           Add page
@@ -123,12 +123,20 @@ export function ScanScreen({ studentId: _studentId }: { studentId: string }) {
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      <div className="fixed inset-x-0 bottom-nav-clear z-20 border-t border-hairline bg-surface p-4 sm:static sm:border-0 sm:bg-transparent sm:p-0">
+      {/* A floating pill, not a boxed bar - no bg-surface/border wrapper to
+          read as a white frame around the button. It's already lifted clear
+          of the tab bar and the circle by bottom-nav-clear; a white box
+          around it would just be chrome the circle's own shadow-only
+          treatment already argues against. inset-x-3 matches the 12px
+          mobile gutter cards sit at (CLAUDE.md's Mobile section). */}
+      <div className="fixed inset-x-3 bottom-nav-clear z-20 sm:static sm:inset-auto">
+        {/* sm:w-36 matches "Add page" above - same width as the same step's
+            other action, not just independently auto-sized. */}
         <Button
           type="button"
           onClick={handleDone}
           disabled={pages.length === 0}
-          className="w-full sm:w-auto"
+          className="w-full sm:w-36"
         >
           Done
         </Button>

@@ -341,8 +341,12 @@ export function RoutineScreen({
       </div>
 
       {/* ------------------------------------------------------- save bar --- */}
+      {/* A floating pair of pills, not a boxed bar - same reasoning as
+          scan-screen.tsx's Done button: no bg-surface/border wrapper to
+          read as a white frame, no chrome the Scan circle's own
+          shadow-only treatment already argues against. */}
       {editable && mode === "draft" ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-hairline bg-surface/95 px-4 py-3 backdrop-blur [padding-bottom:calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="fixed inset-x-3 bottom-nav-clear z-20 sm:static sm:inset-auto">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             {hasCommittedRoutine ? (
               <Button
