@@ -381,6 +381,44 @@ export type Database = {
         }
         Relationships: []
       }
+      result_images: {
+        Row: {
+          created_at: string
+          id: string
+          page_no: number
+          raw_parse: Json | null
+          result_id: string
+          storage_path: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          page_no: number
+          raw_parse?: Json | null
+          result_id: string
+          storage_path: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          page_no?: number
+          raw_parse?: Json | null
+          result_id?: string
+          storage_path?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "result_images_result_id_student_id_fkey"
+            columns: ["result_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "results"
+            referencedColumns: ["id", "student_id"]
+          },
+        ]
+      }
       results: {
         Row: {
           assessment_id: string
@@ -390,8 +428,10 @@ export type Database = {
           entry_mode: string
           id: string
           logged_at: string
+          name_mismatch: boolean
           ocr_confidence: Json | null
           paper_missing: boolean
+          parsed_student_name: string | null
           percentage: number
           raw_obtained: number
           raw_total: number
@@ -406,8 +446,10 @@ export type Database = {
           entry_mode?: string
           id?: string
           logged_at?: string
+          name_mismatch?: boolean
           ocr_confidence?: Json | null
           paper_missing?: boolean
+          parsed_student_name?: string | null
           percentage?: number
           raw_obtained: number
           raw_total: number
@@ -422,8 +464,10 @@ export type Database = {
           entry_mode?: string
           id?: string
           logged_at?: string
+          name_mismatch?: boolean
           ocr_confidence?: Json | null
           paper_missing?: boolean
+          parsed_student_name?: string | null
           percentage?: number
           raw_obtained?: number
           raw_total?: number
@@ -542,6 +586,95 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_jobs: {
+        Row: {
+          created_at: string
+          error: string | null
+          expires_at: string
+          id: string
+          raw_parse: Json | null
+          result_id: string | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          expires_at?: string
+          id?: string
+          raw_parse?: Json | null
+          result_id?: string | null
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          expires_at?: string
+          id?: string
+          raw_parse?: Json | null
+          result_id?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_jobs_result_id_student_id_fkey"
+            columns: ["result_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "results"
+            referencedColumns: ["id", "student_id"]
+          },
+          {
+            foreignKeyName: "scan_jobs_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scan_pages: {
+        Row: {
+          created_at: string
+          has_header: boolean | null
+          id: string
+          page_no: number
+          scan_job_id: string
+          storage_path: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          has_header?: boolean | null
+          id?: string
+          page_no: number
+          scan_job_id: string
+          storage_path: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          has_header?: boolean | null
+          id?: string
+          page_no?: number
+          scan_job_id?: string
+          storage_path?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_pages_scan_job_id_student_id_fkey"
+            columns: ["scan_job_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "scan_jobs"
+            referencedColumns: ["id", "student_id"]
           },
         ]
       }
@@ -782,6 +915,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      abandon_expired_scan_jobs: { Args: never; Returns: string[] }
       can_correct_result: { Args: { p_student: string }; Returns: boolean }
       can_read_student: { Args: { p_student: string }; Returns: boolean }
       capture_routine_alias: {
@@ -794,6 +928,10 @@ export type Database = {
       }
       commit_syllabus_tree: {
         Args: { p_session: string; p_student: string; p_tree: Json }
+        Returns: Json
+      }
+      confirm_scan_job: {
+        Args: { p_entry: Json; p_job: string }
         Returns: Json
       }
       is_guardian_of: { Args: { p_student: string }; Returns: boolean }
