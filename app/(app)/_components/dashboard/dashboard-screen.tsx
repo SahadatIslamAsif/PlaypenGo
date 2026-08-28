@@ -74,7 +74,7 @@ export function DashboardScreen({
       {/* --------------------------------------------------------- desktop --- */}
       <div className="hidden gap-5 lg:grid lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-5">
-          <StatCardsRow items={statCards} layout="grid" />
+          <StatCardsRow items={statCards} layout="grid" emptyVariant="card" />
 
           <Card>
             <p className="mb-3 text-sm font-semibold text-ink">Your progress</p>

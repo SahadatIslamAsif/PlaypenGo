@@ -1,20 +1,34 @@
+import { Card } from "@/components/ui/card";
 import { StatCard, type StatCardData } from "./stat-card";
 
 // Two layouts sharing one card: a wrapping row on desktop, a snap-scrolling
 // carousel on mobile (design system: "the three stat cards as a
 // snap-scrolling carousel").
+//
+// emptyVariant exists because the empty state needs different framing
+// depending on whether the caller already put it inside a Card of its own:
+// the mobile dashboard wraps this whole component in an external
+// <Card><p>Latest results</p>...</Card> unconditionally (populated or not),
+// so its empty text should stay bare - card-wrapping it too would nest a
+// card inside a card. The desktop dashboard has no such wrapper (a
+// populated row is just self-contained stat-card tiles, no heading, no
+// outer card per §8's layout) - so ITS empty state needs its own Card, or
+// it renders as unstyled text floating above "Your progress".
 
 export function StatCardsRow({
   items,
   layout,
+  emptyVariant = "bare",
 }: {
   items: StatCardData[];
   layout: "grid" | "carousel";
+  emptyVariant?: "bare" | "card";
 }) {
   if (items.length === 0) {
-    return (
+    const message = (
       <p className="text-sm text-muted">No results yet. Scan a paper to start tracking.</p>
     );
+    return emptyVariant === "card" ? <Card>{message}</Card> : message;
   }
 
   if (layout === "carousel") {
