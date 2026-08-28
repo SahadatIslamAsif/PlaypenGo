@@ -120,12 +120,19 @@ function compareHeader(actual: RawHeader, expected: RawHeader): FieldResult[] {
   const nameResult: FieldResult =
     actual.student_name === null || expected.student_name === null
       ? scored("header.student_name", actual.student_name, expected.student_name)
-      : knownLimitation(
-          "header.student_name",
-          actual.student_name,
-          expected.student_name,
-          "compared via namesMatch (token-subset, lib/scans/match.ts), not string equality - but a spelling variant within one token (e.g. Hassan/Hasan) still fails, since that's a different token, not a subset. See KNOWN_LIMITATIONS above.",
-        );
+      : {
+          // knownLimitation() isn't used here on purpose - it compares via
+          // scored()'s plain deepEqual, which is exactly the string-equality
+          // bug this field must NOT have. namesMatch (token-subset) is the
+          // actual comparison; category/reason are added by hand instead.
+          path: "header.student_name",
+          status: namesMatch(actual.student_name, expected.student_name) ? "pass" : "fail",
+          expected: expected.student_name,
+          actual: actual.student_name,
+          category: "known_limitation",
+          reason:
+            "compared via namesMatch (token-subset, lib/scans/match.ts), not string equality - but a spelling variant within one token (e.g. Hassan/Hasan) still fails, since that's a different token, not a subset. See KNOWN_LIMITATIONS above.",
+        };
 
   return [
     nameResult,
