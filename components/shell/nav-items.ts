@@ -14,6 +14,7 @@ import {
   Home,
   LineChart,
   type LucideIcon,
+  ScanLine,
   Settings,
 } from "lucide-react";
 
@@ -30,6 +31,11 @@ const SUBJECTS: NavItem = { href: "/subjects", label: "Subjects", icon: BookOpen
 const RESULTS: NavItem = { href: "/results", label: "Results", icon: LineChart };
 const ROUTINE: NavItem = { href: "/routine", label: "Routine", icon: CalendarClock };
 const SETTINGS: NavItem = { href: "/settings", label: "Settings", icon: Settings };
+
+// Not in SIDEBAR_NAV or BOTTOM_TABS below - it's rendered as the raised
+// --ink circle overlapping the bottom bar (bottom-tabs.tsx), student only,
+// never a same-weight list entry alongside Home/Subjects/etc.
+export const SCAN: NavItem = { href: "/scan", label: "Scan", icon: ScanLine };
 
 // The full nav for the sidebar (≥1024) and icon rail (640-1023) — every
 // destination a role can reach, Settings included.

@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BOTTOM_TABS, MORE_ITEM } from "./nav-items";
+import { BOTTOM_TABS, MORE_ITEM, SCAN } from "./nav-items";
 
 // <640px, student and tutor only — the guardian uses SegmentedNav instead.
 // Design system: "56px tall plus env(safe-area-inset-bottom). Icons at 20
 // with a 11px label; active item takes --accent, not the black pill (a
 // filled pill is too heavy at this size)."
 //
-// §8 puts a raised Scan button centred over this bar; that ships with Phase
-// 5. This renders the remaining slots evenly rather than leaving a gap where
-// Scan will go, so the bar reads as complete today rather than half-built.
+// The raised --ink Scan circle overlaps this bar for the student only — "the
+// tutor has no scan affordance anywhere" (CLAUDE.md), so the tutor's row
+// below renders with no reserved gap for it, not an empty slot.
+//
+// Positioned at 40% rather than 50%: items = [Home, Subjects, Results,
+// Routine, More] is 5 equal flex columns, and CLAUDE.md's ordering ("Home ·
+// Subjects · Scan · Results · More") puts Scan right after Subjects — the
+// boundary after the 2nd of 5 columns, i.e. 2/5.
 
 export function BottomTabs({ role }: { role: "student" | "tutor" }) {
   const pathname = usePathname();
@@ -39,6 +44,17 @@ export function BottomTabs({ role }: { role: "student" | "tutor" }) {
           </Link>
         );
       })}
+
+      {role === "student" ? (
+        <Link
+          href={SCAN.href}
+          aria-label="Scan a paper"
+          className="absolute top-0 z-40 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-surface bg-ink text-shell shadow-elevated transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          style={{ left: "40%" }}
+        >
+          <SCAN.icon className="h-6 w-6" strokeWidth={1.5} />
+        </Link>
+      ) : null}
     </nav>
   );
 }
