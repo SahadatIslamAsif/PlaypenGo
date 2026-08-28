@@ -36,7 +36,7 @@ begin;
 -- SET ROLE does not re-evaluate.
 set search_path = public, extensions, tests;
 
-select plan(106);
+select plan(110);
 
 -- ------------------------------------------------------------- test names ---
 --
@@ -58,6 +58,7 @@ as $fn$
     when 'student_b'   then '00000000-0000-4000-a000-000000000004'
     when 'guardian_b'  then '00000000-0000-4000-a000-000000000005'
     when 'guardian_c'  then '00000000-0000-4000-a000-000000000006'
+    when 'student_d'   then '00000000-0000-4000-a000-000000000007'
     when 'physics_a'   then '00000000-0000-4000-b000-000000000001'
     when 'maths_a'     then '00000000-0000-4000-b000-000000000002'
     when 'physics_b'   then '00000000-0000-4000-b000-000000000003'
@@ -206,11 +207,22 @@ select ok(public.is_tutor_of(tests.uid('student_b')),
 select ok(public.can_read_student(tests.uid('student_b')),
   'the tutor may read student B');
 
--- §3.3 gives the tutor INSERT/UPDATE on assessments, results and result_images
--- when Phase 4 creates them. 0006 leaves can_log_for() with no caller until
--- then, so this is the only thing holding it correct in the meantime.
-select ok(public.can_log_for(tests.uid('student_a')),
-  'the tutor may log a paper for student A');
+-- §3.3, as 0018 narrowed it: the tutor may correct a mark beside the student,
+-- and that is the whole of their write reach. They are not a student, so
+-- is_owner_student() must refuse them everywhere it is used.
+select ok(public.can_correct_result(tests.uid('student_a')),
+  'the tutor may correct a result for student A');
+
+select ok(not public.is_owner_student(tests.uid('student_a')),
+  'the tutor is not the owning student, so writes nothing else');
+
+-- The link is what carries even that one write. Student D is in the fixture
+-- precisely so this can be asserted: nobody is linked to them.
+select ok(not public.can_correct_result(tests.uid('student_d')),
+  'and may not correct a result for a student they do not tutor');
+
+select ok(not public.can_read_student(tests.uid('student_d')),
+  'nor read one');
 
 select tests.login_as(tests.uid('guardian_a'));
 
@@ -225,9 +237,13 @@ select ok(not public.is_guardian_of(tests.uid('student_b')),
 select ok(not public.can_read_student(tests.uid('student_b')),
   'guardian A may not read student B');
 
--- The whole of §1's read-only rule, in one predicate.
-select ok(not public.can_log_for(tests.uid('student_a')),
-  'guardian A may never log, not even for their own student');
+-- The whole of §1's read-only rule, in two predicates. A guardian satisfies
+-- neither, for their own student or anyone else's.
+select ok(not public.can_correct_result(tests.uid('student_a')),
+  'guardian A may never correct a result, not even for their own student');
+
+select ok(not public.is_owner_student(tests.uid('student_a')),
+  'guardian A may never write, not even for their own student');
 
 select tests.login_as(tests.uid('guardian_c'));
 

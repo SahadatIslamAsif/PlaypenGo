@@ -10,9 +10,11 @@
 --     chapter_id FK gave, now for a many-to-many shape;
 --   * set_assessment_chapters() replaces a set atomically (a second call with
 --     a smaller list drops what the first call added, not merges with it);
---   * the access matrix on the new table is exactly assessments' — student,
---     approved tutor, and nobody else, DELETE included for the tutor (the
---     migration's header explains why this is not a §3.3 violation);
+--   * the access matrix on the new table is exactly assessments' — the
+--     student and nobody else, on both verbs. 0017 originally gave the tutor
+--     INSERT and DELETE here, reasoning that it "preserves the tutor's
+--     existing" reach onto assessments; 0018 removed that reach when §3.3 was
+--     revised, and this section is what holds the two tables in step;
 --   * log_manual_result() links every id in `chapter_ids`, on both entry
 --     shapes, and tolerates the array being empty or absent.
 --
@@ -25,7 +27,7 @@ begin;
 
 set search_path = public, extensions, tests;
 
-select plan(22);
+select plan(23);
 
 -- ------------------------------------------------------------- test names ---
 
@@ -215,7 +217,7 @@ select lives_ok(
 );
 
 -- ===========================================================================
--- 6. Access matrix - exactly assessments' shape, DELETE included for tutors
+-- 6. Access matrix - exactly assessments' shape: student-only, both verbs
 -- ===========================================================================
 
 select lives_ok(
@@ -226,6 +228,14 @@ select lives_ok(
              '00000000-0000-4000-b000-000000000001', 'CT', 'scheduled', '2026-09-15',
              '00000000-0000-4000-a000-000000000002') $$,
   'setup: one more CT, for the authorization matrix'
+);
+
+select lives_ok(
+  $$ select public.set_assessment_chapters(
+       '00000000-0000-4000-7000-000000000032',
+       array['00000000-0000-4000-c000-000000000001']::uuid[]
+     ) $$,
+  'setup: and the student links a chapter to it, for the others to fail against'
 );
 
 select tests.login_as(tests.uid('guardian_a'));
@@ -250,28 +260,35 @@ select throws_ok(
   'an unrelated student cannot even see student A''s assessment exists - not found, not denied, same as log_manual_result''s own foreign-id case'
 );
 
+-- 0017 gated both verbs on can_log_for() and argued the DELETE was safe
+-- because it "preserves the tutor's existing" reach onto assessments. 0018
+-- removed that reach, so the argument went with it: which chapters a paper
+-- covered is the student's record of their own work.
 select tests.login_as(tests.uid('tutor'));
 
-select lives_ok(
+select throws_ok(
   $$ select public.set_assessment_chapters(
        '00000000-0000-4000-7000-000000000032',
        array['00000000-0000-4000-c000-000000000001', '00000000-0000-4000-c000-000000000002']::uuid[]
      ) $$,
-  'the tutor links chapters on the student''s behalf, same as assessments_insert'
+  '42501', NULL,
+  'the tutor cannot link a chapter - assessment_chapters_insert is student-only now'
 );
 
+-- The other denial shape: DELETE is filtered by USING, so it is a silent
+-- success over zero rows and has to be read back.
 select lives_ok(
   $$ delete from public.assessment_chapters
       where assessment_id = '00000000-0000-4000-7000-000000000032'
-        and chapter_id = '00000000-0000-4000-c000-000000000002' $$,
-  'and the tutor can remove one - correcting a mis-pick is INSERT+DELETE now, not UPDATE'
+        and chapter_id = '00000000-0000-4000-c000-000000000001' $$,
+  'the tutor''s delete raises nothing - filtered, not errored'
 );
 
 select is(
   (select count(*) from public.assessment_chapters
     where assessment_id = '00000000-0000-4000-7000-000000000032'),
   1::bigint,
-  'exactly the one link remains'
+  'and the link the student made is still there'
 );
 
 select tests.logout();

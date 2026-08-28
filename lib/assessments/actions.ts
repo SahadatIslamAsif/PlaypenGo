@@ -18,9 +18,8 @@ async function currentUser() {
 /**
  * §8: "Assign / edit CT date on any chapter, with postpone." One action for
  * both — creating the assessment the first time, updating its scheduled_date
- * every time after. Ordinary table writes: 0013's policies (can_log_for) are
- * what authorize the tutor's use of this, same as everywhere else on these
- * two tables.
+ * every time after. Ordinary table writes, authorized by 0018's
+ * is_owner_student(): a CT the student put on their own calendar.
  */
 export async function assignCTDate(input: {
   studentId: string;
@@ -87,10 +86,11 @@ export async function cancelCT(assessmentId: string): Promise<ActionState> {
 }
 
 /**
- * Student-only at the table level (0013's delete policy) — a tutor who logs a
- * result on a student's behalf cannot also delete it, per §3.3's "cannot
- * delete student data." The button that calls this is hidden for everyone
- * else in the UI, and the policy is what actually holds if it weren't.
+ * Student-only at the table level (0018's delete policy). §3.3 withholds
+ * DELETE from the tutor even now that their reach is a single UPDATE: a
+ * mis-keyed mark is corrected in place, never removed. The button that calls
+ * this is hidden for everyone else in the UI, and the policy is what actually
+ * holds if it weren't.
  */
 export async function deleteResult(resultId: string): Promise<ActionState> {
   const { supabase } = await currentUser();

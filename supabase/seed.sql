@@ -150,6 +150,20 @@ values
    '{"provider":"email","providers":["email"]}',
    '{"role":"guardian","full_name":"Guardian C"}',
    '', '', '', '', '', '',
+   now(), now()),
+
+  -- student D — linked to nobody at all. Every "the tutor cannot write for a
+  -- student they do not tutor" assertion needs a target the tutor is not
+  -- approved for, and A and B are both his. 0014's suite noted the gap; this
+  -- is the row that closes it. Deliberately left with no subjects, no
+  -- routine and no results: its only job is to be unreachable.
+  ('00000000-0000-0000-0000-000000000000',
+   '00000000-0000-4000-a000-000000000007',
+   'authenticated', 'authenticated', 'student.d@example.test',
+   crypt('password123', gen_salt('bf')), now(),
+   '{"provider":"email","providers":["email"]}',
+   '{"role":"student","full_name":"Student D","class_level":"8","section":"Bluebell","session_label":"2026-2027"}',
+   '', '', '', '', '', '',
    now(), now());
 
 -- -------------------------------------------------------------------- links ---

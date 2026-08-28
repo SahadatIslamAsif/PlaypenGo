@@ -12,7 +12,7 @@ import { previewMarks, type AssessmentType } from "@/lib/assessments/marks";
 // §5.3's manual fallback, as a bottom sheet ("Modals are bottom sheets").
 // Fields: subject, paper, type, chapter, obtained, total, and a "Paper not
 // returned" checkbox — plus a date, which §5.3's list doesn't name but which
-// a tutor logging a paper from earlier in the week genuinely needs.
+// a student logging a paper from earlier in the week genuinely needs.
 //
 // The live conversion preview (§6, made visible before the save button is
 // even pressed) is the point of the whole app in miniature.

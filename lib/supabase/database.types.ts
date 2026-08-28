@@ -779,7 +779,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_log_for: { Args: { p_student: string }; Returns: boolean }
+      can_correct_result: { Args: { p_student: string }; Returns: boolean }
       can_read_student: { Args: { p_student: string }; Returns: boolean }
       capture_routine_alias: {
         Args: { p_raw: string; p_student: string; p_subject: string }
@@ -794,6 +794,7 @@ export type Database = {
         Returns: Json
       }
       is_guardian_of: { Args: { p_student: string }; Returns: boolean }
+      is_owner_student: { Args: { p_student: string }; Returns: boolean }
       is_pending_guardian_for_my_student: {
         Args: { p_other: string }
         Returns: boolean

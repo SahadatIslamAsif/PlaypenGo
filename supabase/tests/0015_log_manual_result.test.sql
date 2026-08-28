@@ -24,7 +24,7 @@ begin;
 
 set search_path = public, extensions, tests;
 
-select plan(18);
+select plan(19);
 
 -- ------------------------------------------------------------- test names ---
 
@@ -236,8 +236,8 @@ select throws_ok(
   'an unrelated student cannot log a result for student A'
 );
 
--- The tutor's session-logging path, §5.3's primary use.
-select tests.login_as(tests.uid('tutor'));
+-- §5.3's manual fallback, run by the only role that may: the student.
+select tests.login_as(tests.uid('student_a'));
 
 select is(
   (public.log_manual_result(
@@ -249,7 +249,7 @@ select is(
     )
   ) ->> 'converted')::numeric,
   13.5,
-  'the tutor logs a result on the student''s behalf through the same function'
+  'the student logs a result whose paper has not come back yet'
 );
 
 select is(
@@ -258,6 +258,25 @@ select is(
     where a.student_subject_id = tests.uid('physics_a') and r.raw_obtained = 9),
   true,
   'and the paper_missing flag from §5.3''s manual fallback is recorded'
+);
+
+-- This was the tutor's session-logging path until §3.3 was revised. The
+-- function is SECURITY INVOKER and never carried an authorization check of
+-- its own — 0014's header made that a feature, "no second authz surface" —
+-- so narrowing assessments_insert in 0018 closed this door with it, and the
+-- denial surfaces from inside the function rather than at its edge.
+select tests.login_as(tests.uid('tutor'));
+
+select throws_ok(
+  $$ select public.log_manual_result(
+       '00000000-0000-4000-a000-000000000002',
+       jsonb_build_object(
+         'student_subject_id', '00000000-0000-4000-b000-000000000001',
+         'type', 'CWM', 'raw_obtained', 9, 'raw_total', 10
+       )
+     ) $$,
+  '42501', NULL,
+  'the tutor can no longer log on the student''s behalf - §3.3, via the policy'
 );
 
 select tests.logout();

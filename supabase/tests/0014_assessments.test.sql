@@ -8,18 +8,19 @@
 --     or `percentage` directly (they are GENERATED ALWAYS), and that
 --     `converted_scale` is derived from the assessment's type rather than
 --     accepted from the caller.
---   * The access matrix is a genuinely different shape from every earlier
---     table. §3.3: a tutor gets INSERT/UPDATE through an ordinary policy here
---     — the first table-level tutor write in the project — and still cannot
---     DELETE. Every other write path so far has been either student-only or a
---     scoped definer RPC; this is neither.
+--   * The access matrix, as 0018 left it. §3.3 gives the tutor "SELECT on
+--     linked students, plus UPDATE on `results` only", and `results_update`
+--     is now the single table-level tutor write in the entire project. The
+--     interesting assertions are the ones on either side of it: the tutor
+--     cannot create the assessment, cannot create the result, cannot move the
+--     CT date, and cannot delete — but the correction itself must genuinely
+--     land, converted column and all.
 --
--- Also covers the can_log_for() repair: 0003 defined it as
--- `p_student = auth.uid() or is_tutor_of(p_student)`, which a guardian
--- supplying their own id would satisfy — the exact hole 0012 closed on six
--- other tables. It has never had a caller until this migration, so 0013
--- redefines it before wiring it up. This suite is what would fail if that
--- redefinition were ever reverted.
+-- 0013 wrote this section around the v1.0 rule, where the tutor logged papers
+-- during a session and `can_log_for()` was "the only place a tutor writes
+-- through an ordinary policy". §3.3's revision retired that, 0018 split the
+-- predicate into is_owner_student() / can_correct_result(), and this suite is
+-- what would fail if the old grant were ever restored.
 --
 -- Run against a local stack:
 --
@@ -30,7 +31,7 @@ begin;
 
 set search_path = public, extensions, tests;
 
-select plan(45);
+select plan(51);
 
 -- ------------------------------------------------------------- test names ---
 
@@ -393,10 +394,23 @@ select throws_ok(
 );
 
 -- ===========================================================================
--- 4. The access matrix - the first table-level tutor write in the project
+-- 4. The access matrix - correcting a mark is not creating one
 -- ===========================================================================
+--
+-- 0018 narrowed §3.3 to "SELECT on linked students, plus UPDATE on `results`
+-- only". This section is the whole of that sentence, verb by verb, and the
+-- two denial shapes 0009's header separates matter here more than anywhere:
+--
+--   * INSERT fails a WITH CHECK, so it raises 42501.
+--   * UPDATE and DELETE are filtered by a USING clause, which is a silent
+--     success over zero rows. Every one of those is read back afterwards; an
+--     assertion that only checked for the absence of an exception would pass
+--     against a policy that let the write through.
+--
+-- The row the tutor corrects has to exist first, and only the student can
+-- make one now — which is itself the rule under test.
 
-select tests.login_as(tests.uid('tutor'));
+select tests.login_as(tests.uid('student_a'));
 
 select lives_ok(
   $$ insert into public.assessments
@@ -404,14 +418,8 @@ select lives_ok(
      values ('00000000-0000-4000-7000-000000000001',
              '00000000-0000-4000-a000-000000000002',
              '00000000-0000-4000-b000-000000000001', 'CT',
-             '00000000-0000-4000-a000-000000000001') $$,
-  'the tutor inserts an assessment for a linked student - the table grant'
-);
-
-select lives_ok(
-  $$ update public.assessments set scheduled_date = current_date + 3
-      where id = '00000000-0000-4000-7000-000000000001' $$,
-  'and updates it - assigning the CT date'
+             '00000000-0000-4000-a000-000000000002') $$,
+  'the student creates their own assessment'
 );
 
 select lives_ok(
@@ -419,15 +427,73 @@ select lives_ok(
        (assessment_id, student_id, raw_obtained, raw_total, entry_mode, verified_by)
      values ('00000000-0000-4000-7000-000000000001',
              '00000000-0000-4000-a000-000000000002', 18, 40, 'manual',
-             '00000000-0000-4000-a000-000000000001') $$,
-  'the tutor logs a result on the student''s behalf - the primary session flow'
+             '00000000-0000-4000-a000-000000000002') $$,
+  'and logs the result themselves - the only role that may'
 );
 
--- "Cannot delete student data" - the one verb withheld even here. A DELETE
--- whose USING clause matches nothing is not an error in Postgres, it is a
--- successful delete of zero rows — the silent-success case 0009's header
--- warns about. Each is read back rather than trusted on the absence of an
--- exception.
+select tests.login_as(tests.uid('tutor'));
+
+select throws_ok(
+  $$ insert into public.assessments
+       (id, student_id, student_subject_id, type, created_by)
+     values ('00000000-0000-4000-7000-000000000002',
+             '00000000-0000-4000-a000-000000000002',
+             '00000000-0000-4000-b000-000000000001', 'CT',
+             '00000000-0000-4000-a000-000000000001') $$,
+  '42501', NULL,
+  'the tutor cannot create an assessment - no INSERT anywhere'
+);
+
+select throws_ok(
+  $$ insert into public.results
+       (assessment_id, student_id, raw_obtained, raw_total, entry_mode, verified_by)
+     values ('00000000-0000-4000-7000-000000000001',
+             '00000000-0000-4000-a000-000000000002', 12, 15, 'manual',
+             '00000000-0000-4000-a000-000000000001') $$,
+  '42501', NULL,
+  'nor log a result on the student''s behalf - the v1.0 flow, now closed'
+);
+
+-- Rescheduling a CT was the tutor's under can_log_for(). It is the student's
+-- act now: the assessment is theirs, and the tutor never touches the row that
+-- says when a test happens.
+select lives_ok(
+  $$ update public.assessments set scheduled_date = current_date + 3
+      where id = '00000000-0000-4000-7000-000000000001' $$,
+  'the tutor''s update of the assessment raises nothing - filtered, not errored'
+);
+
+select is(
+  (select scheduled_date from public.assessments
+    where id = '00000000-0000-4000-7000-000000000001'),
+  NULL::date,
+  'and the CT date is unchanged'
+);
+
+-- §3.3's one door: "correcting a wrong mark beside the student is a different
+-- act from creating one." This is the single write the tutor still holds, and
+-- it must genuinely land - the converted column recomputes from it.
+select lives_ok(
+  $$ update public.results set raw_obtained = 22
+      where assessment_id = '00000000-0000-4000-7000-000000000001' $$,
+  'the tutor corrects the mark - the sole tutor write in the project'
+);
+
+select is(
+  (select raw_obtained from public.results
+    where assessment_id = '00000000-0000-4000-7000-000000000001'),
+  22::numeric,
+  'and the correction actually landed'
+);
+
+select is(
+  (select converted from public.results
+    where assessment_id = '00000000-0000-4000-7000-000000000001'),
+  13.8::numeric,
+  'the CT scale recomputes from the corrected mark - 22/40 * 25'
+);
+
+-- "No DELETE" - unchanged from 0013, and still the silent-success shape.
 select lives_ok(
   $$ delete from public.assessments
       where id = '00000000-0000-4000-7000-000000000001' $$,
@@ -454,11 +520,10 @@ select is(
   'and the result is still there too'
 );
 
--- Not tested here: "the tutor cannot write for a student they do not tutor".
--- seed.sql's tutor is approved for BOTH student A and student B, so the
--- fixture has no untutored student to aim at. That authorization check is
--- already asserted, on a random unrelated target, by 0010's and 0011's suites
--- for the other two definer/table write paths.
+-- "The tutor cannot write for a student they do not tutor" is asserted in
+-- 0009's suite against student_d, whom seed.sql deliberately leaves untutored
+-- for exactly this. The fixture's tutor is approved for both A and B, so it
+-- cannot be shown from here.
 
 -- ===========================================================================
 -- 5. The guardian - read-only, including under their own id

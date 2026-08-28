@@ -1,7 +1,7 @@
 // §6's conversion, as a second implementation of the generated columns from
 // migration 0013. The SQL columns are the guarantee — nothing can be stored
 // with the wrong number — but they only exist once a row is saved, and the
-// entry form needs to show `7.5 / 15 · 50%` while the tutor is still typing.
+// entry form needs to show `7.5 / 15 · 50%` while the student is still typing.
 // This module is what drives that live preview.
 //
 // Both implementations are tested against the same three worked examples from
