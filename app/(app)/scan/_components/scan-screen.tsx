@@ -83,7 +83,7 @@ export function ScanScreen({ studentId: _studentId }: { studentId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-5 pb-24 lg:pb-0">
+    <div className="flex flex-col gap-5 pb-nav-clear lg:pb-0">
       <div>
         <h1 className="font-display text-xl font-semibold text-ink">Scan a paper</h1>
         <p className="mt-1 text-sm text-muted">
@@ -123,7 +123,7 @@ export function ScanScreen({ studentId: _studentId }: { studentId: string }) {
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      <div className="fixed inset-x-0 bottom-14 z-20 border-t border-hairline bg-surface p-4 [padding-bottom:env(safe-area-inset-bottom)] sm:static sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="fixed inset-x-0 bottom-nav-clear z-20 border-t border-hairline bg-surface p-4 sm:static sm:border-0 sm:bg-transparent sm:p-0">
         <Button
           type="button"
           onClick={handleDone}

@@ -70,7 +70,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* ----------------------------------------------------------- <640 --- */}
-      <div className="flex min-h-screen flex-col gap-4 pb-20 sm:hidden">
+      <div className="flex min-h-screen flex-col gap-4 pb-nav-clear sm:hidden">
         <Header fullName={profile?.full_name ?? null} role={role} compact />
         {role === "guardian" && profile ? <SegmentedNav /> : null}
         <main className="flex-1 px-3">{children}</main>

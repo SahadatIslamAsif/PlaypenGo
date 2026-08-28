@@ -44,7 +44,7 @@ export function ResultsScreen({
   const filterOptions = subjects.filter((s) => items.some((i) => i.subjectId === s.id));
 
   return (
-    <div className="flex flex-col gap-5 pb-20 lg:pb-0">
+    <div className="flex flex-col gap-5 pb-nav-clear lg:pb-0">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-xl font-semibold text-ink">Results</h1>
         {editable ? (

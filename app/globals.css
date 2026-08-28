@@ -30,6 +30,18 @@
 
   --shadow-soft-value: 0 1px 2px rgba(14, 26, 20, 0.04);
   --shadow-elevated-value: 0 10px 30px rgba(14, 26, 20, 0.06);
+
+  /* The bottom tab bar's own height, plus how far the raised Scan circle
+     rises above it (half the circle's own 56px height), plus the safe
+     area. One shared number for every sticky bottom bar and every
+     scrollable page's bottom padding on <640 - so no screen guesses its
+     own clearance, and a screen that gets it wrong (the circle punching
+     through a sticky action bar) doesn't happen twice. */
+  --bottom-nav-height: 56px;
+  --bottom-nav-fab-rise: 28px;
+  --bottom-nav-clear-value: calc(
+    var(--bottom-nav-height) + var(--bottom-nav-fab-rise) + env(safe-area-inset-bottom)
+  );
 }
 
 :root.dark {
@@ -73,6 +85,10 @@
 
   --shadow-soft: var(--shadow-soft-value);
   --shadow-elevated: var(--shadow-elevated-value);
+
+  /* p-nav-clear, pb-nav-clear, bottom-nav-clear, etc. - see the :root
+     comment above for what this number is made of. */
+  --spacing-nav-clear: var(--bottom-nav-clear-value);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;

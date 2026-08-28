@@ -55,15 +55,15 @@ export function DashboardScreen({
           <UpcomingList items={upcoming} today={today} />
         </Card>
 
-        <div>
+        <Card>
           <p className="mb-3 text-sm font-semibold text-ink">Today</p>
           <TodayTimeline periods={todaysPeriods} subjectNames={subjectNames} />
-        </div>
+        </Card>
 
-        <div>
+        <Card>
           <p className="mb-3 text-sm font-semibold text-ink">Latest results</p>
           <StatCardsRow items={statCards} layout="carousel" />
-        </div>
+        </Card>
 
         <Card>
           <p className="mb-3 text-sm font-semibold text-ink">Your progress</p>

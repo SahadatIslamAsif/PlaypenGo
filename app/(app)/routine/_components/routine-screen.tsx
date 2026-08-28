@@ -138,7 +138,7 @@ export function RoutineScreen({
         : null;
 
   return (
-    <div className="flex flex-col gap-4 pb-24">
+    <div className="flex flex-col gap-4 pb-nav-clear lg:pb-0">
       {/* ------------------------------------------------------------ head --- */}
       <Card className="flex flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
