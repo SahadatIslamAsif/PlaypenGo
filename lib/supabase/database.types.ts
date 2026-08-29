@@ -1056,6 +1056,10 @@ export type Database = {
     }
     Functions: {
       abandon_expired_scan_jobs: { Args: never; Returns: string[] }
+      answer_confirm_token: {
+        Args: { p_answer: string; p_token: string }
+        Returns: Json
+      }
       attach_scan_job_to_result: {
         Args: { p_entry: Json; p_job: string; p_result_id: string }
         Returns: Json
