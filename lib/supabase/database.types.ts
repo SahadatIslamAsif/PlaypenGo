@@ -34,6 +34,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          id: string
+          kind: string
+          last_sent_at: string | null
+          sent_count: number
+          student_id: string
+          target_date: string
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          last_sent_at?: string | null
+          sent_count?: number
+          student_id: string
+          target_date: string
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          last_sent_at?: string | null
+          sent_count?: number
+          student_id?: string
+          target_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_assessment_id_student_id_fkey"
+            columns: ["assessment_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id", "student_id"]
+          },
+          {
+            foreignKeyName: "alerts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_chapters: {
         Row: {
           assessment_id: string
@@ -204,6 +252,88 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "student_subjects"
             referencedColumns: ["id", "student_id"]
+          },
+        ]
+      }
+      confirm_tokens: {
+        Row: {
+          alert_id: string
+          alert_kind: string
+          answer: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          alert_id: string
+          alert_kind?: string
+          answer?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          alert_id?: string
+          alert_kind?: string
+          answer?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "confirm_tokens_alert_id_alert_kind_fkey"
+            columns: ["alert_id", "alert_kind"]
+            isOneToOne: false
+            referencedRelation: "alerts"
+            referencedColumns: ["id", "kind"]
+          },
+        ]
+      }
+      email_log: {
+        Row: {
+          created_at: string
+          email_type: string
+          id: string
+          payload: Json | null
+          recipient_id: string
+          send_date: string
+          status: string
+          subject_line: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          id?: string
+          payload?: Json | null
+          recipient_id: string
+          send_date: string
+          status: string
+          subject_line?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          id?: string
+          payload?: Json | null
+          recipient_id?: string
+          send_date?: string
+          status?: string
+          subject_line?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
