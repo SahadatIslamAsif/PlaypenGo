@@ -36,7 +36,7 @@ export function RedeemCodeForm({
           {pending ? "Checking…" : "Link"}
         </Button>
       </form>
-      {state.error ? <p className="mt-2 text-xs text-red-600">{state.error}</p> : null}
+      {state.error ? <p className="mt-2 text-xs text-danger">{state.error}</p> : null}
     </Card>
   );
 }

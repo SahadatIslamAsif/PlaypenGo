@@ -26,7 +26,7 @@ export function LoginForm() {
           required
         />
       </Field>
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+      {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
       <Button type="submit" disabled={pending} className="w-full">
         {pending ? "Signing in…" : "Sign in"}
       </Button>

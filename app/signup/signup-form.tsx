@@ -53,7 +53,7 @@ export function SignupForm({ role }: { role: "student" | "guardian" | "tutor" })
         </>
       ) : null}
 
-      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+      {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 
       <Button type="submit" disabled={pending} className="w-full">
         {pending ? "Creating account…" : "Create account"}

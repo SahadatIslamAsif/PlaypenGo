@@ -231,7 +231,7 @@ export function ManualEntrySheet({
           Paper not returned
         </label>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
 
         <Button type="button" onClick={save} disabled={pending} className="w-full">
           {pending ? "Saving…" : "Save result"}

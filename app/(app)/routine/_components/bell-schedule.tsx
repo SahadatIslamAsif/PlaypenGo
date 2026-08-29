@@ -71,7 +71,7 @@ export function BellSchedule({
                 type="button"
                 onClick={() => onRemove(index)}
                 aria-label={`Remove period ${column.period_no}`}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-button text-muted transition-colors hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-button text-muted transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <Trash2 className="h-4 w-4" strokeWidth={1.5} />
               </button>

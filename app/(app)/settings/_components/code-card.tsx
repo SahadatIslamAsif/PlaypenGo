@@ -73,7 +73,7 @@ export function CodeCard({
         </div>
       ) : null}
       {copied ? <p className="mt-1 text-xs text-accent">Copied.</p> : null}
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
 
       <Button
         type="button"

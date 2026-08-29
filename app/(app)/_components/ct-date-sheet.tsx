@@ -78,7 +78,7 @@ export function CTDateSheet({
           <MiniCalendar today={today} selected={date || null} ctDates={ctDates} onSelect={setDate} />
         </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
 
         <div className="flex gap-2">
           {ct && !isCancelled ? (

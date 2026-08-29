@@ -77,7 +77,7 @@ export function SubjectCard({
                     <button
                       type="submit"
                       aria-label={`Delete ${paper.name}`}
-                      className="flex h-7 w-7 items-center justify-center rounded-button text-muted hover:text-red-600"
+                      className="flex h-7 w-7 items-center justify-center rounded-button text-muted hover:text-danger"
                     >
                       <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
                     </button>
@@ -110,7 +110,7 @@ export function SubjectCard({
                 <input type="hidden" name="student_subject_id" value={subject.id} />
                 <button
                   type="submit"
-                  className="py-2 text-xs font-medium text-muted hover:text-red-600"
+                  className="py-2 text-xs font-medium text-muted hover:text-danger"
                 >
                   Delete subject
                 </button>

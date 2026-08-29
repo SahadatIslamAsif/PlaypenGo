@@ -48,7 +48,7 @@ export function AddChapterInline({
           Done
         </button>
       </form>
-      {state.error ? <p className="text-xs text-red-600">{state.error}</p> : null}
+      {state.error ? <p className="text-xs text-danger">{state.error}</p> : null}
     </div>
   );
 }

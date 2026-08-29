@@ -111,7 +111,7 @@ export function ChapterRow({
           <button
             type="submit"
             aria-label="Delete chapter"
-            className="flex h-9 w-9 items-center justify-center rounded-button text-muted transition-colors hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="flex h-9 w-9 items-center justify-center rounded-button text-muted transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Trash2 className="h-4 w-4" strokeWidth={1.5} />
           </button>
