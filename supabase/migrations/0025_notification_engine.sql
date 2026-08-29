@@ -254,6 +254,15 @@ grant select, insert         on public.confirm_tokens to service_role;
 grant select, insert, update on public.email_log      to service_role;
 grant select, insert, update on public.assessments    to service_role;
 
+-- Opening a CWM window means inserting the `predicted` assessment *and* linking
+-- it to the chapter whose completion triggered it. That link is not
+-- bookkeeping: §5.3's on-confirm attach picks between open windows by "a window
+-- whose chapter matches the inferred chapter wins", and a window with no
+-- chapter link can never win that comparison. 0017 made `assessment_chapters`
+-- the only place that link lives — `assessments.chapter_id` was dropped in the
+-- same migration.
+grant select, insert on public.assessment_chapters to service_role;
+
 grant select on public.profiles            to service_role;
 grant select on public.guardian_links      to service_role;
 grant select on public.tutor_links         to service_role;
@@ -263,4 +272,3 @@ grant select on public.chapters            to service_role;
 grant select on public.routines            to service_role;
 grant select on public.routine_periods     to service_role;
 grant select on public.results             to service_role;
-grant select on public.assessment_chapters to service_role;

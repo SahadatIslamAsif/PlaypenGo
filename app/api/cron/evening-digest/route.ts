@@ -1,33 +1,72 @@
 import { NextResponse } from "next/server";
+import { runEveningDigest } from "@/lib/notifications/engine";
 import { SCANS_BUCKET } from "@/lib/scans/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // §7.2's cron route - "one job at 20:00 Asia/Dhaka = 14:00 UTC, triggered by
 // cron-job.org against POST /api/cron/evening-digest protected by
 // Authorization: Bearer ${CRON_SECRET}... Keep a vercel.json entry as
-// backup." The digest itself (§7.4-§7.6) is Phase 6 and isn't built yet -
-// Phases 1-4 ship before Gemini, and Phase 6 comes after Phase 5's scan
-// pipeline (CLAUDE.md's build order). But CLAUDE.md is also explicit that
-// scheduling is "external cron hitting *a* bearer-protected route" -
-// singular - so the TTL sweep §5.3 already promised ("Abandoned scan images
-// are swept on a TTL") lands here now, in the route the digest will grow
-// into, rather than as a second cron-job.org job someone has to remember to
-// keep firing once the digest exists.
+// backup."
 //
-// GET and POST both run the same sweep: cron-job.org can be pointed at
-// either, but Vercel's own Cron Jobs (the vercel.json backup below) always
-// issue GET, so POST-only would make that backup silently do nothing.
+// Two jobs share this one hit, because CLAUDE.md is explicit that scheduling
+// is "external cron hitting *a* bearer-protected route" - singular:
 //
-// service-role, not the request's own session - a cron hit has no user to
-// be. RLS does not apply to this role, which is exactly why CLAUDE.md
-// confines the key to this one route: abandon_expired_scan_jobs() (0021) is
-// SECURITY INVOKER precisely so that, called this way, it sweeps every
-// student's expired jobs in one statement rather than needing a loop over
-// each of them individually.
-export const maxDuration = 30;
+//   1. §5.3's TTL sweep, which landed here in Phase 5 ahead of the digest
+//      rather than as a second cron-job.org job someone has to remember to
+//      keep firing.
+//   2. §7's evening digest, which is what the route was always named for.
+//
+// The sweep runs first and its outcome never blocks the digest. A Storage
+// failure leaves orphaned bytes under a 1 GB budget; a digest that does not go
+// out leaves a student unprepared for a test tomorrow. If exactly one of the
+// two can happen tonight, it is the digest.
+//
+// GET and POST both run the same work: cron-job.org can be pointed at either,
+// but Vercel's own Cron Jobs (the vercel.json backup) always issue GET, so
+// POST-only would make that backup silently do nothing.
+//
+// service-role, not the request's own session - a cron hit has no user to be.
+// RLS does not apply to this role, which is exactly why CLAUDE.md confines the
+// key to this one route.
+//
+// §2: Vercel Hobby functions "default to a 10s timeout, raisable to 60s via
+// maxDuration". The digest walks every student sequentially and sends over
+// SMTP, so it needs materially more than the sweep ever did - and 60 is the
+// ceiling, not a target. §7.2's instruction to chunk the work is why the engine
+// is per-student: the seam to cut along is already there if this ever runs
+// close.
+export const maxDuration = 60;
 
-async function runDailySweep(): Promise<NextResponse> {
+async function runNightly(): Promise<NextResponse> {
   const supabase = createServiceClient();
+
+  const sweep = await runTtlSweep(supabase);
+
+  // §7: the whole point of the route.
+  let digest: Awaited<ReturnType<typeof runEveningDigest>> | null = null;
+  let digestError: string | null = null;
+
+  try {
+    digest = await runEveningDigest(supabase, new Date());
+  } catch (error) {
+    digestError = error instanceof Error ? error.message : "digest failed";
+  }
+
+  const status = digestError ? 500 : sweep.storageError ? 207 : 200;
+
+  return NextResponse.json({ sweep, digest, digestError }, { status });
+}
+
+type SweepResult = {
+  abandoned: number;
+  imagesDeleted: number;
+  storageError?: string;
+  sweepError?: string;
+};
+
+async function runTtlSweep(
+  supabase: ReturnType<typeof createServiceClient>,
+): Promise<SweepResult> {
 
   // abandon_expired_scan_jobs() (0021) only ever flips rows: status ->
   // 'abandoned' for jobs past expires_at. It deliberately does not touch
@@ -39,8 +78,9 @@ async function runDailySweep(): Promise<NextResponse> {
     "abandon_expired_scan_jobs",
   );
 
+  // A failed sweep is reported, never thrown: the digest still has to go out.
   if (sweepError) {
-    return NextResponse.json({ error: sweepError.message }, { status: 500 });
+    return { abandoned: 0, imagesDeleted: 0, sweepError: sweepError.message };
   }
 
   const jobIds = abandonedIds ?? [];
@@ -71,17 +111,18 @@ async function runDailySweep(): Promise<NextResponse> {
         // orphaned objects are harmless: private bucket, never billed
         // against a result, just quietly over the 1 GB budget until
         // whoever's watching Supabase storage notices.
-        return NextResponse.json(
-          { abandoned: jobIds.length, imagesDeleted: 0, storageError: removeError.message },
-          { status: 207 },
-        );
+        return {
+          abandoned: jobIds.length,
+          imagesDeleted: 0,
+          storageError: removeError.message,
+        };
       }
 
       imagesDeleted = removed?.length ?? 0;
     }
   }
 
-  return NextResponse.json({ abandoned: jobIds.length, imagesDeleted });
+  return { abandoned: jobIds.length, imagesDeleted };
 }
 
 function checkAuth(request: Request): NextResponse | null {
@@ -93,9 +134,9 @@ function checkAuth(request: Request): NextResponse | null {
 }
 
 export async function POST(request: Request) {
-  return checkAuth(request) ?? runDailySweep();
+  return checkAuth(request) ?? runNightly();
 }
 
 export async function GET(request: Request) {
-  return checkAuth(request) ?? runDailySweep();
+  return checkAuth(request) ?? runNightly();
 }
