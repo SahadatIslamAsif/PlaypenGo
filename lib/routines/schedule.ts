@@ -1,17 +1,28 @@
 // Reading the routine as a calendar.
 //
-// Two helpers, both pure, both deliberately built in Phase 3 even though their
-// screens come later. `nextClassDay` is §7.3's CWM rule stated as code:
+// These helpers are pure and were built in Phase 3 even though their screens
+// come later. `nextClassDays` is §7.3's window rule stated as code:
 //
-//   "CWM prediction (chapter at p80 or p100, no result yet) -> D = the next
-//    date on which that subject appears in the routine."
+//   "Once a chapter reaches p80 or p100 with no result yet, open a window on
+//    the next 4 class occurrences of that subject, read straight off the
+//    routine — four occurrences, not four calendar days and not a fixed number
+//    of weeks."
 //
-// The trap it exists to avoid is the weekend. §7.3 continues: "the advance
-// alert fires on the evening of D-2, the final reminder on the evening of D-1 —
-// calendar days, weekend included. Chemistry runs Sun/Mon/Tue, so a Sunday
-// class produces alerts on Friday and Saturday evening." The routine's
-// Sunday-to-Thursday week decides which day D is; it must not leak into the
-// arithmetic that walks backwards from D.
+// That sentence replaced an earlier single-guess model, and the shape of these
+// functions still shows the seam: `nextClassDay` was written against the old
+// model, when a CWM had exactly one predicted date. It survives because the
+// dashboard's "Coming up" list genuinely does want the first occurrence and
+// nothing more (`lib/assessments/upcoming.ts`) — but it is now the count-of-one
+// case of `nextClassDays`, not a rule of its own.
+//
+// The trap they exist to avoid is the weekend. §7.3: the advance alert fires
+// two evenings out and the night-before alert the evening before, "both
+// calendar days, weekend included — the routine only decides which day the
+// class itself falls on, never which evenings the student is reachable".
+// Chemistry runs Sun/Mon/Tue, so a Sunday class produces alerts on Friday and
+// Saturday evening. The routine's Sunday-to-Thursday week decides which days
+// the occurrences are; it must not leak into the arithmetic that walks
+// backwards from one.
 //
 // Everything is computed in the student's timezone, which §3.2 defaults to
 // Asia/Dhaka. A server in UTC is six hours behind Dhaka, so "today" derived
@@ -143,16 +154,56 @@ export function currentPeriod(
 }
 
 /**
- * §7.3: the next date on which `studentSubjectId` appears in the routine.
+ * §7.3: the next `count` dates on which `studentSubjectId` appears in the
+ * routine — the occurrences a window watches.
  *
- * Starts from the day after `from` — a CWM predicted today is about the next
- * time the class meets, not the one that has already happened. Only academic
- * periods count: a break column is never an answer.
+ * Starts from the day after `from` — a window opened today is about the next
+ * times the class meets, not one that has already happened. Only academic
+ * periods count: a break column is never an occurrence.
  *
- * Returns null when the subject has no academic period at all, which is the
- * honest answer for a subject the routine never mentions and is exactly the
- * case `crosscheck.ts` warns about. Two weeks is well past the point where a
- * missing subject is a data problem rather than a scheduling one.
+ * Returns fewer than `count` dates, empty list included, rather than throwing.
+ * A subject the routine never mentions has no occurrences at all, which is the
+ * honest answer and exactly the case `crosscheck.ts` warns about; a subject
+ * that meets rarely may run out of horizon. Both are real, and a caller that
+ * gets three dates back opens a three-occurrence window rather than refusing to
+ * open one.
+ *
+ * The horizon scales with `count` so the default is the same two weeks per
+ * occurrence the single-date version always had. A subject meeting once a week
+ * needs four weeks to yield four occurrences; a fixed 14 would silently
+ * truncate its window to two.
+ */
+export function nextClassDays(
+  rows: RoutinePeriodRow[],
+  studentSubjectId: string,
+  from: string,
+  count: number,
+  horizonDays = count * 14,
+): string[] {
+  const meets = new Set(
+    rows
+      .filter((r) => r.is_academic && r.student_subject_id === studentSubjectId)
+      .map((r) => r.day_of_week),
+  );
+
+  const found: string[] = [];
+  if (meets.size === 0 || count <= 0) return found;
+
+  for (let offset = 1; offset <= horizonDays && found.length < count; offset++) {
+    const candidate = addDays(from, offset);
+    if (meets.has(dayOfWeekOf(candidate))) found.push(candidate);
+  }
+
+  return found;
+}
+
+/**
+ * The first of those occurrences, or null.
+ *
+ * The dashboard's "Coming up" list wants one date per predicted CWM, not a
+ * window — see `lib/assessments/upcoming.ts`. Kept as a named function because
+ * that is a genuinely different question from "what is this window watching",
+ * and reading `nextClassDays(...)[0] ?? null` at the call site would blur them.
  */
 export function nextClassDay(
   rows: RoutinePeriodRow[],
@@ -160,20 +211,7 @@ export function nextClassDay(
   from: string,
   horizonDays = 14,
 ): string | null {
-  const meets = new Set(
-    rows
-      .filter((r) => r.is_academic && r.student_subject_id === studentSubjectId)
-      .map((r) => r.day_of_week),
-  );
-
-  if (meets.size === 0) return null;
-
-  for (let offset = 1; offset <= horizonDays; offset++) {
-    const candidate = addDays(from, offset);
-    if (meets.has(dayOfWeekOf(candidate))) return candidate;
-  }
-
-  return null;
+  return nextClassDays(rows, studentSubjectId, from, 1, horizonDays)[0] ?? null;
 }
 
 /**

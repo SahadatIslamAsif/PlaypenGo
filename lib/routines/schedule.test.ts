@@ -14,6 +14,7 @@ import {
   localDate,
   localDayOfWeek,
   nextClassDay,
+  nextClassDays,
   todaysPeriods,
 } from "./schedule";
 
@@ -183,5 +184,51 @@ describe("formatTime", () => {
     expect(formatTime("13:25")).toBe("1:25 pm");
     expect(formatTime("12:05:00")).toBe("12:05 pm");
     expect(formatTime(null)).toBe("");
+  });
+});
+
+describe("nextClassDays — §7.3's window", () => {
+  it("returns the next four occurrences of a subject that meets Sun/Mon/Tue", () => {
+    // From Sunday 2026-08-30: Mon 31, Tue 1, then the following Sun 6, Mon 7.
+    // Four *occurrences*, not four calendar days and not a fixed number of
+    // weeks — the Wed/Thu/Fri/Sat gap in the middle is simply not counted.
+    expect(nextClassDays(rows, "chem", "2026-08-30", 4)).toEqual([
+      "2026-08-31",
+      "2026-09-01",
+      "2026-09-06",
+      "2026-09-07",
+    ]);
+  });
+
+  it("scales its horizon with the count, so a weekly subject still fills a window", () => {
+    // Physics meets Wednesdays only: four occurrences span four weeks. The old
+    // fixed 14-day horizon would have truncated this window to two.
+    expect(nextClassDays(rows, "phy", "2026-08-30", 4)).toEqual([
+      "2026-09-02",
+      "2026-09-09",
+      "2026-09-16",
+      "2026-09-23",
+    ]);
+  });
+
+  it("returns fewer than asked rather than nothing when the horizon runs out", () => {
+    expect(nextClassDays(rows, "phy", "2026-08-30", 4, 10)).toEqual([
+      "2026-09-02",
+      "2026-09-09",
+    ]);
+  });
+
+  it("returns an empty list for a subject the routine never mentions", () => {
+    expect(nextClassDays(rows, "biology", "2026-08-30", 4)).toEqual([]);
+  });
+
+  it("never counts a non-academic period as an occurrence", () => {
+    expect(nextClassDays(rows, "games", "2026-08-30", 4)).toEqual([]);
+  });
+
+  it("agrees with nextClassDay on the count-of-one case", () => {
+    expect(nextClassDays(rows, "chem", "2026-09-01", 1)).toEqual([
+      nextClassDay(rows, "chem", "2026-09-01"),
+    ]);
   });
 });
