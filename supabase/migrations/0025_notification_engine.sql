@@ -125,6 +125,13 @@ create table public.confirm_tokens (
   -- put on window_closed_at / window_close_reason, for the same reason.
   check ((used_at is null) = (answer is null)),
 
+  -- One question per occurrence. §7.3 gives an expired token no second life —
+  -- "an occurrence whose confirm token expired unused is skipped entirely" —
+  -- so there is no case in which an occurrence is legitimately asked twice, and
+  -- two answers for one occurrence would make two_no_in_a_row's ordering
+  -- ambiguous. Also the index §7.3's join needs, from the alert side.
+  unique (alert_id),
+
   foreign key (alert_id, alert_kind)
     references public.alerts (id, kind) on delete cascade
 );
@@ -135,10 +142,6 @@ create table public.confirm_tokens (
 create index confirm_tokens_live_idx
   on public.confirm_tokens (token)
   where used_at is null;
-
--- §7.3's two_no_in_a_row joins every 'confirm' alert of an assessment to its
--- token to read the answer. That join runs from the alert side.
-create index confirm_tokens_alert_idx on public.confirm_tokens (alert_id);
 
 -- ---------------------------------------------------------------- email_log ---
 --
