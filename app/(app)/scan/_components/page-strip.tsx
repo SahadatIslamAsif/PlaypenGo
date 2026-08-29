@@ -14,10 +14,15 @@ export function PageStrip({
   pages,
   onToggleSame,
   onZoom,
+  singlePaper = false,
 }: {
   pages: CapturedPage[];
   onToggleSame: (id: string) => void;
   onZoom: (id: string) => void;
+  /** §5.3's "Attach paper" flow: always exactly one paper, so the "Paper N"
+   * pills and the same/new-paper toggle - the grouping control - have
+   * nothing to control and would just be confusing chrome. */
+  singlePaper?: boolean;
 }) {
   if (pages.length === 0) return null;
 
@@ -29,7 +34,7 @@ export function PageStrip({
         const startsNewGroup = i === 0 || numbers[i] !== numbers[i - 1];
         return (
           <div key={page.id} className="flex shrink-0 flex-col items-center gap-2">
-            {startsNewGroup ? (
+            {!singlePaper && startsNewGroup ? (
               <span className="rounded-pill bg-tint-mint px-2.5 py-1 text-xs font-medium text-tint-ink">
                 Paper {numbers[i]}
               </span>
@@ -54,7 +59,7 @@ export function PageStrip({
               />
             </button>
 
-            {i > 0 ? (
+            {!singlePaper && i > 0 ? (
               <button
                 type="button"
                 onClick={() => onToggleSame(page.id)}

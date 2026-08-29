@@ -599,6 +599,7 @@ export type Database = {
           result_id: string | null
           status: string
           student_id: string
+          target_result_id: string | null
           updated_at: string
         }
         Insert: {
@@ -610,6 +611,7 @@ export type Database = {
           result_id?: string | null
           status?: string
           student_id: string
+          target_result_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -621,6 +623,7 @@ export type Database = {
           result_id?: string | null
           status?: string
           student_id?: string
+          target_result_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -637,6 +640,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_jobs_target_result_id_student_id_fkey"
+            columns: ["target_result_id", "student_id"]
+            isOneToOne: false
+            referencedRelation: "results"
+            referencedColumns: ["id", "student_id"]
           },
         ]
       }
@@ -916,6 +926,10 @@ export type Database = {
     }
     Functions: {
       abandon_expired_scan_jobs: { Args: never; Returns: string[] }
+      attach_scan_job_to_result: {
+        Args: { p_entry: Json; p_job: string; p_result_id: string }
+        Returns: Json
+      }
       can_correct_result: { Args: { p_student: string }; Returns: boolean }
       can_read_student: { Args: { p_student: string }; Returns: boolean }
       capture_routine_alias: {

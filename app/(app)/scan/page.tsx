@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ScanScreen, type JobStatus, type SubmittedJob } from "./_components/scan-screen";
+import { formatRaw } from "@/lib/assessments/marks";
 import { createClient } from "@/lib/supabase/server";
 
 // Scanning is a student-only action (§3.3, §5.3: "Scanning is a
@@ -8,7 +9,11 @@ import { createClient } from "@/lib/supabase/server";
 // tutor or guardian here - they're sent home rather than shown a screen
 // with every control removed, since there is nothing on this screen for
 // either of them to read.
-export default async function ScanPage() {
+export default async function ScanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ attachTo?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,6 +28,45 @@ export default async function ScanPage() {
     .single();
 
   if ((profile?.role ?? "student") !== "student") redirect("/");
+
+  // §5.3's "Attach paper" entry point - a Link from a manually-logged
+  // result, carrying which result to attach to. Re-derived from the DB
+  // rather than trusted from the URL: the id must actually be this
+  // student's own manually-logged result, or capture proceeds in ordinary
+  // (non-attach) mode instead of silently attaching to the wrong thing.
+  const { attachTo } = await searchParams;
+  let attachTarget: { resultId: string; label: string } | null = null;
+
+  if (attachTo) {
+    const { data: target } = await supabase
+      .from("results")
+      .select("id, assessment_id, raw_obtained, raw_total, entry_mode")
+      .eq("id", attachTo)
+      .eq("student_id", user.id)
+      .eq("entry_mode", "manual")
+      .maybeSingle();
+
+    if (target) {
+      const { data: assessment } = await supabase
+        .from("assessments")
+        .select("student_subject_id")
+        .eq("id", target.assessment_id)
+        .maybeSingle();
+
+      const { data: subject } = assessment
+        ? await supabase
+            .from("student_subjects")
+            .select("display_name")
+            .eq("id", assessment.student_subject_id)
+            .maybeSingle()
+        : { data: null };
+
+      attachTarget = {
+        resultId: target.id,
+        label: `${subject?.display_name ?? "that result"} · ${formatRaw(target.raw_obtained, target.raw_total)}`,
+      };
+    }
+  }
 
   // Every job this student has that isn't done yet - so a reload picks up
   // where it left off instead of losing every in-flight job to React
@@ -43,5 +87,5 @@ export default async function ScanPage() {
     error: job.error,
   }));
 
-  return <ScanScreen studentId={user.id} initialJobs={initialJobs} />;
+  return <ScanScreen studentId={user.id} initialJobs={initialJobs} attachTarget={attachTarget} />;
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { AttachReviewScreen } from "./_components/attach-review-screen";
 import { ReviewScreen, type SubjectOption } from "./_components/review-screen";
 import { Card } from "@/components/ui/card";
 import { resolveSubject, type SubjectCandidate } from "@/lib/routines/resolve";
@@ -38,7 +39,7 @@ export default async function ScanReviewPage({
   // own simply doesn't come back - no separate ownership check needed.
   const { data: job } = await supabase
     .from("scan_jobs")
-    .select("id, status, error, raw_parse, result_id")
+    .select("id, status, error, raw_parse, result_id, target_result_id")
     .eq("id", jobId)
     .maybeSingle();
 
@@ -95,34 +96,112 @@ export default async function ScanReviewPage({
 
   const rawParse = job.raw_parse as unknown as RawParse;
 
-  const [{ data: pages }, { data: studentSubjects }, { data: aliases }, { data: routine }] =
-    await Promise.all([
-      supabase
-        .from("scan_pages")
-        .select("page_no, storage_path")
-        .eq("scan_job_id", jobId)
-        .order("page_no"),
-      supabase
-        .from("student_subjects")
-        .select("id, display_name, catalog_id")
-        .eq("student_id", user.id)
-        .eq("is_active", true)
-        .order("sort_order"),
-      supabase
-        .from("subject_aliases")
-        .select("alias_text, student_subject_id, catalog_id")
-        .not("student_subject_id", "is", null),
-      supabase
-        .from("routines")
-        .select("id")
-        .eq("student_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle(),
-    ]);
+  const { data: pagesForImages } = await supabase
+    .from("scan_pages")
+    .select("page_no, storage_path")
+    .eq("scan_job_id", jobId)
+    .order("page_no");
 
   const pageImages = await Promise.all(
-    (pages ?? []).map((page) => signScanImage(supabase, page.storage_path)),
+    (pagesForImages ?? []).map((page) => signScanImage(supabase, page.storage_path)),
   );
+
+  // §5.3's "attach paper later" - this job was created with a target result
+  // already known (createScanJob's targetResultId), so there is no subject
+  // to resolve and no marks to enter: the assessment already settled all of
+  // that. A much smaller screen than the general review flow below, and it
+  // returns before any of that flow's subject/CT/routine queries run.
+  if (job.target_result_id) {
+    const { data: target } = await supabase
+      .from("results")
+      .select("id, assessment_id, raw_obtained, raw_total, converted, percentage, entry_mode")
+      .eq("id", job.target_result_id)
+      .maybeSingle();
+
+    // entry_mode flips to 'ocr' the moment a paper attaches (0023's own
+    // guard on attach_scan_job_to_result) - a job whose target already moved
+    // past 'manual' has nothing left to attach to, same "not ready" shape as
+    // any other terminal status below.
+    if (!target || target.entry_mode !== "manual") {
+      return (
+        <Card>
+          <p className="text-sm font-semibold text-ink">Can&apos;t attach here</p>
+          <p className="mt-1 text-sm text-muted">
+            That result already has a paper attached, or no longer exists.
+          </p>
+        </Card>
+      );
+    }
+
+    const { data: assessment } = await supabase
+      .from("assessments")
+      .select("student_subject_id, type, occurred_date")
+      .eq("id", target.assessment_id)
+      .maybeSingle();
+
+    const { data: subject } = assessment
+      ? await supabase
+          .from("student_subjects")
+          .select("display_name")
+          .eq("id", assessment.student_subject_id)
+          .maybeSingle()
+      : { data: null };
+
+    const { data: existingLinks } = await supabase
+      .from("assessment_chapters")
+      .select("chapter_id")
+      .eq("assessment_id", target.assessment_id);
+
+    const chaptersAlreadySet = (existingLinks ?? []).length > 0;
+
+    const { data: chapterOptions } =
+      !chaptersAlreadySet && assessment
+        ? await supabase
+            .from("chapters")
+            .select("id, name")
+            .eq("student_id", user.id)
+            .eq("student_subject_id", assessment.student_subject_id)
+            .order("sort_order")
+        : { data: [] };
+
+    return (
+      <AttachReviewScreen
+        jobId={jobId}
+        resultId={target.id}
+        rawParse={rawParse}
+        pageImages={pageImages.map((url) => url ?? "")}
+        seededChapters={chaptersAlreadySet ? [] : (chapterOptions ?? [])}
+        chaptersAlreadySet={chaptersAlreadySet}
+        profileName={profile?.full_name ?? ""}
+        subjectName={subject?.display_name ?? "Unknown subject"}
+        type={(assessment?.type as "CT" | "CWM") ?? "CWM"}
+        occurredDate={assessment?.occurred_date ?? ""}
+        rawObtained={target.raw_obtained}
+        rawTotal={target.raw_total}
+        converted={target.converted}
+        percentage={target.percentage}
+      />
+    );
+  }
+
+  const [{ data: studentSubjects }, { data: aliases }, { data: routine }] = await Promise.all([
+    supabase
+      .from("student_subjects")
+      .select("id, display_name, catalog_id")
+      .eq("student_id", user.id)
+      .eq("is_active", true)
+      .order("sort_order"),
+    supabase
+      .from("subject_aliases")
+      .select("alias_text, student_subject_id, catalog_id")
+      .not("student_subject_id", "is", null),
+    supabase
+      .from("routines")
+      .select("id")
+      .eq("student_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle(),
+  ]);
 
   // Same candidate-building as routine/page.tsx: student_subjects, each
   // merged with its own corrections (subject_aliases) and its catalogue

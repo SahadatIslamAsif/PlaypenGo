@@ -75,7 +75,7 @@ export function ResultsScreen({
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((item) => (
-            <ResultCard key={item.resultId} item={item} canDelete={canDelete} />
+            <ResultCard key={item.resultId} item={item} canDelete={canDelete} canAttach={editable} />
           ))}
         </div>
       )}

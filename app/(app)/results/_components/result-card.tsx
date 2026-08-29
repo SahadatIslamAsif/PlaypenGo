@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useTransition } from "react";
 import { deleteResult } from "@/lib/assessments/actions";
 import { formatConverted, formatRaw } from "@/lib/assessments/marks";
@@ -9,9 +10,14 @@ import type { ResultListItem } from "@/lib/assessments/list";
 export function ResultCard({
   item,
   canDelete,
+  canAttach,
 }: {
   item: ResultListItem;
   canDelete: boolean;
+  /** Scanning is a student-only action (§3.3) - the same boolean that gates
+   * "Log result"/delete on this screen, reused here rather than a second
+   * role check. */
+  canAttach: boolean;
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -38,6 +44,15 @@ export function ResultCard({
           <p className="mt-1.5 inline-flex items-center rounded-pill bg-surface-sunk px-2 py-0.5 text-[11px] text-muted">
             Logged manually (no paper attached)
           </p>
+        ) : null}
+
+        {canAttach && item.entryMode === "manual" ? (
+          <Link
+            href={`/scan?attachTo=${item.resultId}`}
+            className="mt-1.5 inline-block text-xs font-medium text-accent hover:underline"
+          >
+            Attach paper
+          </Link>
         ) : null}
       </div>
 

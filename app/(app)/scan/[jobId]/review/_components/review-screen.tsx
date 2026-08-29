@@ -19,7 +19,7 @@ import {
   toMarkCandidates,
 } from "@/lib/scans/parse/adapt";
 import type { RawParse } from "@/lib/scans/parse/schema";
-import { confirmScanJob } from "@/lib/scans/actions";
+import { attachScanJobToResult, confirmScanJob, type ConfirmEntry } from "@/lib/scans/actions";
 
 // §5.3's verification modal. Every value shown here comes from lib/scans/'s
 // own resolution layer, called once, up front - this component reads the
@@ -129,12 +129,36 @@ export function ReviewScreen({
   const [zoomedPage, setZoomedPage] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // §5.3's duplicate offer: set when confirmScanJob's own duplicate check
+  // (student + subject + occurred_date + raw score) finds a hit. Nothing
+  // has been written yet at that point - this is a fork in the road, not an
+  // error.
+  const [duplicateResultId, setDuplicateResultId] = useState<string | null>(null);
 
   const preview =
     obtained !== "" && total !== "" ? previewMarks(Number(obtained), Number(total), type) : null;
 
   function toggleChapter(id: string) {
     setChapterIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  }
+
+  function buildEntry(): ConfirmEntry {
+    return {
+      studentSubjectId: subjectId,
+      paperId: null,
+      type,
+      // Editable, so this is whatever the field reads by Save, not the
+      // original parse - "every field editable, always" (§5.3).
+      occurredDate: date,
+      rawObtained: Number(obtained),
+      rawTotal: Number(total),
+      chapterIds,
+      // The recorded fact, not gated on nameConfirmed - the checkbox is an
+      // acknowledgement, not a second vote on what actually happened.
+      nameMismatch: !nameMatches,
+      parsedStudentName: !nameMatches ? rawParse.header.student_name : null,
+      ocrConfidence: rawParse.confidence,
+    };
   }
 
   async function handleSave() {
@@ -151,26 +175,19 @@ export function ReviewScreen({
     setSaving(true);
     setSaveError(null);
 
-    const result = await confirmScanJob(jobId, {
-      studentSubjectId: subjectId,
-      paperId: null,
-      type,
-      // Editable, so this is whatever the field reads by Save, not the
-      // original parse - "every field editable, always" (§5.3).
-      occurredDate: date,
-      rawObtained: Number(obtained),
-      rawTotal: Number(total),
-      chapterIds,
-      // The recorded fact, not gated on nameConfirmed - the checkbox is an
-      // acknowledgement, not a second vote on what actually happened.
-      nameMismatch: !nameMatches,
-      parsedStudentName: !nameMatches ? rawParse.header.student_name : null,
-      ocrConfidence: rawParse.confidence,
-    });
+    const result = await confirmScanJob(jobId, buildEntry());
 
     if (result.error) {
       setSaving(false);
       setSaveError(result.error);
+      return;
+    }
+
+    if (result.duplicateResultId) {
+      // Nothing was written - confirmScanJob stopped before the RPC. Back
+      // to live so the duplicate prompt below can offer the choice.
+      setSaving(false);
+      setDuplicateResultId(result.duplicateResultId);
       return;
     }
 
@@ -181,6 +198,37 @@ export function ReviewScreen({
     // view, reading the saved result back from the DB) and replaces this
     // component outright. Flipping the button back to live between now and
     // then would just risk a double-submit for no visible benefit.
+  }
+
+  async function attachToDuplicate() {
+    if (saving || !duplicateResultId) return;
+    setSaving(true);
+    setSaveError(null);
+
+    const entry = buildEntry();
+    const result = await attachScanJobToResult(jobId, duplicateResultId, entry);
+
+    if (result.error) {
+      setSaving(false);
+      setSaveError(result.error);
+      return;
+    }
+    // Same reasoning as handleSave's own success path - page.tsx's
+    // 'confirmed' branch takes over next.
+  }
+
+  async function saveAsNewAnyway() {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+
+    const result = await confirmScanJob(jobId, buildEntry(), { allowDuplicate: true });
+
+    if (result.error) {
+      setSaving(false);
+      setSaveError(result.error);
+      return;
+    }
   }
 
   const zoomedImage = zoomedPage !== null ? pageImages[zoomedPage - 1] : null;
@@ -401,6 +449,40 @@ export function ReviewScreen({
         </Card>
       ) : null}
 
+      {/* ---------------------------------------------------- duplicate offer - §5.3's "offer, never reject" --- */}
+      {duplicateResultId ? (
+        <Card className="flex flex-col gap-3 bg-tint-sage">
+          <div>
+            <p className="text-sm font-semibold text-tint-ink">This looks already logged</p>
+            <p className="mt-1 text-xs text-tint-ink/80">
+              Same subject, date and marks as a result that&apos;s already saved. Attach these
+              images to it instead of creating a second one?
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button type="button" onClick={attachToDuplicate} disabled={saving} className="sm:w-auto">
+              {saving ? "Attaching…" : "Attach to that result"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={saveAsNewAnyway}
+              disabled={saving}
+              className="sm:w-auto"
+            >
+              Save as new anyway
+            </Button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDuplicateResultId(null)}
+            className="self-start text-xs text-tint-ink/80 hover:underline"
+          >
+            Never mind, let me edit first
+          </button>
+        </Card>
+      ) : null}
+
       {saveError ? <p className="text-sm text-red-600">{saveError}</p> : null}
 
       {/* ---------------------------------------------------------------------------------------- save bar --- */}
@@ -409,12 +491,17 @@ export function ReviewScreen({
           chrome the raised Scan circle's own shadow-only treatment already
           argues against. bottom-nav-clear is the one shared clearance token,
           not new padding invented here. Never disabled by an unconfirmed
-          name mismatch - "does not block" (§5.3). */}
-      <div className="fixed inset-x-3 bottom-nav-clear z-20 sm:static sm:inset-auto">
-        <Button type="button" onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
-          {saving ? "Saving…" : "Save result"}
-        </Button>
-      </div>
+          name mismatch - "does not block" (§5.3). Hidden while the
+          duplicate offer above is open - Save would just re-find the same
+          duplicate, since allowDuplicate is only ever true on the "as new
+          anyway" path. */}
+      {!duplicateResultId ? (
+        <div className="fixed inset-x-3 bottom-nav-clear z-20 sm:static sm:inset-auto">
+          <Button type="button" onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+            {saving ? "Saving…" : "Save result"}
+          </Button>
+        </div>
+      ) : null}
 
       {zoomedImage ? (
         <div

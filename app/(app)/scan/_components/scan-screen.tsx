@@ -1,6 +1,7 @@
 "use client";
 
 import { Camera, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { compressImage } from "@/lib/images/compress";
@@ -59,9 +60,17 @@ function statusLabel(status: JobStatus): string {
 export function ScanScreen({
   studentId,
   initialJobs,
+  attachTarget,
 }: {
   studentId: string;
   initialJobs: SubmittedJob[];
+  /** Set only via /scan?attachTo=<resultId> (§5.3's "Attach paper" entry
+   * point on a manually-logged result), and only once page.tsx has
+   * re-verified the id is really this student's own manual-entry result -
+   * never trusted from the URL alone. Capture behaves identically either
+   * way; only what happens after Done differs (one job, carrying this
+   * result's id, instead of one job per paper). */
+  attachTarget: { resultId: string; label: string } | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pages, setPages] = useState<CapturedPage[]>([]);
@@ -133,12 +142,16 @@ export function ScanScreen({
     setError(null);
 
     const supabase = createClient();
-    const papers = groupIntoPapers(pages);
+    // Attaching is always exactly one paper to one already-known result -
+    // the same/new-paper toggle has nothing to split (PageStrip hides it in
+    // this mode too), so every captured page is one job regardless of what
+    // the toggle happens to hold.
+    const papers = attachTarget ? [pages] : groupIntoPapers(pages);
     const newJobs: SubmittedJob[] = [];
 
     for (const paper of papers) {
       const jobId = crypto.randomUUID();
-      const created = await createScanJob(jobId, studentId);
+      const created = await createScanJob(jobId, studentId, attachTarget?.resultId ?? null);
       if (created.error) {
         newJobs.push({ id: jobId, status: "failed", error: created.error });
         continue;
@@ -239,13 +252,27 @@ export function ScanScreen({
   return (
     <div className="flex flex-col gap-5 pb-nav-clear lg:pb-0">
       <div>
-        <h1 className="font-display text-xl font-semibold text-ink">Scan a paper</h1>
+        <h1 className="font-display text-xl font-semibold text-ink">
+          {attachTarget ? "Attach this paper" : "Scan a paper"}
+        </h1>
         <p className="mt-1 text-sm text-muted">
-          Capture every page in order. Up to 5 pages, one paper at a time.
+          {attachTarget
+            ? `Capture every page in order, up to 5 pages, for ${attachTarget.label}.`
+            : "Capture every page in order. Up to 5 pages, one paper at a time."}
         </p>
+        {attachTarget ? (
+          <Link href="/results" className="mt-1 inline-block text-sm text-muted hover:text-ink">
+            Cancel
+          </Link>
+        ) : null}
       </div>
 
-      <PageStrip pages={pages} onToggleSame={toggleSame} onZoom={setZoomedId} />
+      <PageStrip
+        pages={pages}
+        onToggleSame={toggleSame}
+        onZoom={setZoomedId}
+        singlePaper={attachTarget !== null}
+      />
 
       <div className="flex items-center gap-3">
         <button
@@ -307,6 +334,13 @@ export function ScanScreen({
                 >
                   Discard
                 </button>
+              ) : job.status === "review" ? (
+                <Link
+                  href={`/scan/${job.id}/review`}
+                  className="shrink-0 text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  Review
+                </Link>
               ) : null}
             </div>
           ))}

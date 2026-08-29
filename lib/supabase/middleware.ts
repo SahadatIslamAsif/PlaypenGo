@@ -38,6 +38,17 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+
+  // API routes answer their own callers directly - JSON errors, not a
+  // redirect to an HTML login page a fetch() or an external cron hit could
+  // never follow. Every route under here already does its own auth (the
+  // scan parse route's own getUser() + 401 JSON; the cron route's own
+  // Authorization: Bearer check, from a caller that has no session cookie
+  // at all) - this proxy only decides page navigation.
+  if (pathname.startsWith("/api/")) {
+    return response;
+  }
+
   const isPublic = isPublicPath(pathname);
 
   if (!user && !isPublic) {

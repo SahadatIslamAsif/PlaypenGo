@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import {
   findCTAttachment,
   findCWMAttachment,
+  findDuplicateResult,
   type CTCandidate,
   type CWMWindowCandidate,
+  type ExistingResult,
 } from "@/lib/scans/match";
 import { SCANS_BUCKET, SCRIPTS_BUCKET } from "@/lib/scans/storage";
 import type { Json } from "@/lib/supabase/database.types";
@@ -36,12 +38,19 @@ async function currentUser() {
  * pattern as the routine's own routineId) so the upload that follows can
  * build each page's storage path before this insert even returns.
  */
-export async function createScanJob(jobId: string, studentId: string): Promise<ActionState> {
+export async function createScanJob(
+  jobId: string,
+  studentId: string,
+  targetResultId: string | null = null,
+): Promise<ActionState> {
   const { supabase } = await currentUser();
 
-  const { error } = await supabase
-    .from("scan_jobs")
-    .insert({ id: jobId, student_id: studentId, status: "uploading" });
+  const { error } = await supabase.from("scan_jobs").insert({
+    id: jobId,
+    student_id: studentId,
+    status: "uploading",
+    target_result_id: targetResultId,
+  });
 
   if (error) return { error: error.message };
 
@@ -168,13 +177,84 @@ export type ConfirmResult = {
   /** Set only when the RPC succeeded but moving the evidence images did
    * not finish - the result is real and saved either way. */
   imagingWarning?: string;
+  /** Set instead of resultId/percentage/converted when confirmScanJob finds
+   * a duplicate and stops short of writing anything - see its own doc
+   * comment's step 0. Nothing has been saved yet; the caller chooses. */
+  duplicateResultId?: string;
+};
+
+type RpcResult = {
+  result_id: string;
+  percentage: number | null;
+  converted: number | null;
+  images: { page_no: number; from_path: string; to_path: string }[] | null;
 };
 
 /**
+ * Step 3 of both confirmScanJob and attachScanJobToResult, factored out
+ * because it's identical either way: the DB write already fully happened
+ * (this only runs once the RPC has returned successfully), and what's left
+ * is exactly §5.3's "bytes move last" - copy every page before deleting any,
+ * so a copy failure partway leaves the already-correct result exactly as
+ * correct, with every source image still sitting in scans/, recoverable
+ * rather than orphaned.
+ */
+async function moveScanImages(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  result: RpcResult,
+): Promise<ConfirmResult> {
+  const images = result.images ?? [];
+
+  for (const image of images) {
+    const { error: copyError } = await supabase.storage
+      .from(SCANS_BUCKET)
+      .copy(image.from_path, image.to_path, { destinationBucket: SCRIPTS_BUCKET });
+
+    if (copyError) {
+      revalidatePath("/scan");
+      revalidatePath("/results");
+      revalidatePath("/");
+      return {
+        error: null,
+        resultId: result.result_id,
+        percentage: result.percentage ?? undefined,
+        converted: result.converted ?? undefined,
+        imagingWarning:
+          "Result saved, but the paper's images didn't finish copying. Nothing was lost - the originals are still there.",
+      };
+    }
+  }
+
+  if (images.length > 0) {
+    await supabase.storage.from(SCANS_BUCKET).remove(images.map((i) => i.from_path));
+  }
+
+  revalidatePath("/scan");
+  revalidatePath("/results");
+  revalidatePath("/");
+  revalidatePath("/subjects");
+
+  return {
+    error: null,
+    resultId: result.result_id,
+    percentage: result.percentage ?? undefined,
+    converted: result.converted ?? undefined,
+  };
+}
+
+/**
  * §5.3's "on confirm" - the one write that turns a reviewed parse into a
- * real result. Two things can't be one Postgres transaction with the rest,
+ * real result. Three things can't be one Postgres transaction with the rest,
  * structurally, not by choice:
  *
+ *   0. Duplicate detection. "Match on student + subject + occurred_date +
+ *      raw score; on a hit, offer attach these images to the existing
+ *      result rather than rejecting the upload" (§5.3) - lib/scans/match.ts's
+ *      findDuplicateResult, over candidates loaded here the same way the
+ *      attachment decision below loads its own. A hit stops before anything
+ *      is written and hands the caller a resultId to attach to instead
+ *      (attachScanJobToResult) - `allowDuplicate` is how the caller says
+ *      "save as new anyway" and skips this check on the retry.
  *   1. Deciding which assessment (if any) to attach to. CT and CWM
  *      attachment both need candidate rows read first (a scheduled CT for
  *      this subject; this subject's open predicted CWM windows) and a
@@ -184,29 +264,72 @@ export type ConfirmResult = {
  *      cannot live inside the same statement as the writes it informs.
  *      Nothing here is written yet at this point; if it throws, nothing
  *      has happened.
- *   2. Moving the evidence images. confirm_scan_job() (migration 0021)
- *      already does everything DB-side in one statement - attach-or-create
- *      the assessment (a trigger already closes its window on attach,
- *      untouched here), the result row via log_manual_result (so §6's
- *      conversion, chapter_ids -> set_assessment_chapters, entry_mode,
- *      name_mismatch and ocr_confidence all come from its one existing
- *      entry shape rather than a second RPC), the result_images rows
- *      naming their eventual scripts/ destinations, and the job flipping
- *      to 'confirmed'. That whole step either fully happens or fully
- *      doesn't - if it throws, scan_jobs is untouched and still 'review',
- *      exactly as resumable as it was before Save was pressed. But
- *      Storage isn't part of Postgres's transaction at all; the bytes
- *      move only after this step returns, as separate API calls.
+ *   2. Moving the evidence images - moveScanImages() above.
  *
- * Within step 2's aftermath: every copy runs before any delete. If a copy
- * fails partway, none of the originals are deleted - the result this
- * already wrote stays exactly as correct as it was, and every source image
- * is still sitting in scans/ untouched, recoverable rather than orphaned
- * the way abandon_expired_scan_jobs's TTL sweep handles a job that never
- * got this far at all.
+ * confirm_scan_job() (migration 0021) is everything else, DB-side, in one
+ * statement: attach-or-create the assessment (a trigger already closes its
+ * window on attach, untouched here), the result row via log_manual_result
+ * (so §6's conversion, chapter_ids -> set_assessment_chapters, entry_mode,
+ * name_mismatch and ocr_confidence all come from its one existing entry
+ * shape rather than a second RPC), the result_images rows naming their
+ * eventual scripts/ destinations, and the job flipping to 'confirmed'. That
+ * whole step either fully happens or fully doesn't - if it throws, scan_jobs
+ * is untouched and still 'review', exactly as resumable as it was before
+ * Save was pressed.
  */
-export async function confirmScanJob(jobId: string, entry: ConfirmEntry): Promise<ConfirmResult> {
+export async function confirmScanJob(
+  jobId: string,
+  entry: ConfirmEntry,
+  options?: { allowDuplicate?: boolean },
+): Promise<ConfirmResult> {
   const { supabase, userId } = await currentUser();
+
+  // --- 0. Duplicate check - stops before anything is written. ---
+  if (!options?.allowDuplicate) {
+    const { data: subjectAssessments } = await supabase
+      .from("assessments")
+      .select("id, occurred_date")
+      .eq("student_id", userId)
+      .eq("student_subject_id", entry.studentSubjectId);
+
+    const dateByAssessment = new Map(
+      (subjectAssessments ?? []).map((a) => [a.id, a.occurred_date]),
+    );
+    const assessmentIds = [...dateByAssessment.keys()];
+
+    const { data: existingResults } = assessmentIds.length
+      ? await supabase
+          .from("results")
+          .select("id, assessment_id, raw_obtained, raw_total")
+          .in("assessment_id", assessmentIds)
+      : { data: [] };
+
+    const candidates: ExistingResult[] = (existingResults ?? [])
+      .map((r) => {
+        const occurredDate = dateByAssessment.get(r.assessment_id);
+        return occurredDate
+          ? {
+              id: r.id,
+              studentSubjectId: entry.studentSubjectId,
+              occurredDate,
+              rawObtained: r.raw_obtained,
+              rawTotal: r.raw_total,
+            }
+          : null;
+      })
+      .filter((c): c is ExistingResult => c !== null);
+
+    const duplicate = findDuplicateResult(candidates, {
+      studentSubjectId: entry.studentSubjectId,
+      occurredDate: entry.occurredDate,
+      rawObtained: entry.rawObtained,
+      rawTotal: entry.rawTotal,
+    });
+
+    if (duplicate) {
+      return { error: null, duplicateResultId: duplicate.id };
+    }
+  }
 
   // --- 1. Attach, or leave null and let confirm_scan_job create new. ---
   let assessmentId: string | null = null;
@@ -289,48 +412,39 @@ export async function confirmScanJob(jobId: string, entry: ConfirmEntry): Promis
 
   if (error) return { error: error.message };
 
-  const result = data as {
-    result_id: string;
-    percentage: number | null;
-    converted: number | null;
-    images: { page_no: number; from_path: string; to_path: string }[] | null;
-  };
-  const images = result.images ?? [];
+  // --- 3. The bytes. ---
+  return moveScanImages(supabase, data as RpcResult);
+}
 
-  // --- 3. The bytes. Copy every page before deleting any. ---
-  for (const image of images) {
-    const { error: copyError } = await supabase.storage
-      .from(SCANS_BUCKET)
-      .copy(image.from_path, image.to_path, { destinationBucket: SCRIPTS_BUCKET });
+/**
+ * The other caller of attach_scan_job_to_result() (migration 0023) - "attach
+ * paper later" (§5.3). Unlike confirmScanJob there is no decision to make:
+ * the caller already knows which result this scan belongs to, either because
+ * the student chose "Attach paper" on it directly (createScanJob's own
+ * targetResultId carried that intent through capture and parse) or because
+ * confirmScanJob's own duplicate check just found it. Steps 0 and 1 above
+ * don't apply here at all - there's nothing to decide, only the RPC and the
+ * same bytes-move-last aftermath.
+ */
+export async function attachScanJobToResult(
+  jobId: string,
+  resultId: string,
+  entry: Pick<ConfirmEntry, "chapterIds" | "nameMismatch" | "parsedStudentName" | "ocrConfidence">,
+): Promise<ConfirmResult> {
+  const { supabase } = await currentUser();
 
-    if (copyError) {
-      revalidatePath("/scan");
-      revalidatePath("/results");
-      revalidatePath("/");
-      return {
-        error: null,
-        resultId: result.result_id,
-        percentage: result.percentage ?? undefined,
-        converted: result.converted ?? undefined,
-        imagingWarning:
-          "Result saved, but the paper's images didn't finish copying. Nothing was lost - the originals are still there.",
-      };
-    }
-  }
+  const { data, error } = await supabase.rpc("attach_scan_job_to_result", {
+    p_job: jobId,
+    p_result_id: resultId,
+    p_entry: {
+      chapter_ids: entry.chapterIds,
+      name_mismatch: entry.nameMismatch,
+      parsed_student_name: entry.parsedStudentName,
+      ocr_confidence: entry.ocrConfidence,
+    } as Json,
+  });
 
-  if (images.length > 0) {
-    await supabase.storage.from(SCANS_BUCKET).remove(images.map((i) => i.from_path));
-  }
+  if (error) return { error: error.message };
 
-  revalidatePath("/scan");
-  revalidatePath("/results");
-  revalidatePath("/");
-  revalidatePath("/subjects");
-
-  return {
-    error: null,
-    resultId: result.result_id,
-    percentage: result.percentage ?? undefined,
-    converted: result.converted ?? undefined,
-  };
+  return moveScanImages(supabase, data as RpcResult);
 }
