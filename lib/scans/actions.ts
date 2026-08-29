@@ -242,6 +242,112 @@ async function moveScanImages(
   };
 }
 
+export type AttachmentPreview = {
+  assessmentId: string | null;
+  matchedBy: "ct-date" | "cwm-chapter" | "cwm-oldest" | null;
+  /** CT only, and only when there was no exact-date match: every other open
+   * scheduled CT for this subject, offered so a postponed CT can still be
+   * picked by hand. "No fuzzy dates... never auto-match, never hide" (§5.3) -
+   * this is the "never hide" half; findCTAttachment always returns these,
+   * confirmScanJob just used to throw them away. */
+  ctOptions: CTCandidate[];
+};
+
+/**
+ * The attachment decision, on its own: which assessment (if any) this scan
+ * would attach to, without writing anything. Shared by confirmScanJob
+ * (which trusts it unless the caller overrides it) and previewAttachment
+ * below (which exists so the review screen can show the decision - and a
+ * "file as new" way out of it - before Save is ever pressed).
+ */
+async function resolveAttachment(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  entry: Pick<ConfirmEntry, "studentSubjectId" | "type" | "occurredDate" | "chapterIds">,
+): Promise<AttachmentPreview> {
+  if (entry.type === "CT") {
+    const { data: scheduled } = await supabase
+      .from("assessments")
+      .select("id, scheduled_date")
+      .eq("student_id", userId)
+      .eq("student_subject_id", entry.studentSubjectId)
+      .eq("type", "CT")
+      .eq("status", "scheduled");
+
+    const candidates: CTCandidate[] = (scheduled ?? [])
+      .filter((a): a is { id: string; scheduled_date: string } => a.scheduled_date !== null)
+      .map((a) => ({ id: a.id, scheduledDate: a.scheduled_date }));
+
+    const result = findCTAttachment(candidates, entry.occurredDate);
+    return {
+      assessmentId: result.matchId,
+      matchedBy: result.matchId ? "ct-date" : null,
+      ctOptions: result.options,
+    };
+  }
+
+  // "CWM attaches to an open predicted window for that subject and type,
+  // with chapter as a tiebreak only, never a requirement." Phase 6 (window
+  // opening) isn't built yet, so `windows` is empty in practice today - this
+  // still has to be wired correctly for when it isn't.
+  const { data: windows } = await supabase
+    .from("assessments")
+    .select("id, created_at")
+    .eq("student_id", userId)
+    .eq("student_subject_id", entry.studentSubjectId)
+    .eq("type", "CWM")
+    .eq("status", "predicted")
+    .is("window_closed_at", null);
+
+  if (!windows || windows.length === 0) {
+    return { assessmentId: null, matchedBy: null, ctOptions: [] };
+  }
+
+  const { data: links } = await supabase
+    .from("assessment_chapters")
+    .select("assessment_id, chapter_id")
+    .in(
+      "assessment_id",
+      windows.map((w) => w.id),
+    );
+
+  const chaptersByAssessment = new Map<string, string[]>();
+  for (const link of links ?? []) {
+    const list = chaptersByAssessment.get(link.assessment_id) ?? [];
+    list.push(link.chapter_id);
+    chaptersByAssessment.set(link.assessment_id, list);
+  }
+
+  const candidates: CWMWindowCandidate[] = windows.map((w) => ({
+    id: w.id,
+    chapterIds: chaptersByAssessment.get(w.id) ?? [],
+    createdAt: w.created_at,
+  }));
+
+  const result = findCWMAttachment(candidates, entry.chapterIds[0] ?? null);
+  return {
+    assessmentId: result.matchId,
+    matchedBy: result.matchedBy === "chapter" ? "cwm-chapter" : result.matchedBy === "oldest" ? "cwm-oldest" : null,
+    ctOptions: [],
+  };
+}
+
+/**
+ * Read-only - the review screen calls this whenever subject, type, date or
+ * chapter changes, so "this will attach to..." (and the "file as new
+ * instead" way out of it) reflects whatever the form currently holds, not
+ * the parse's original read. Nothing here is authoritative: confirmScanJob
+ * re-runs the exact same resolveAttachment() at Save time rather than
+ * trusting whatever this last returned, since the two calls can be
+ * arbitrarily far apart and the candidate rows are not locked in between.
+ */
+export async function previewAttachment(
+  entry: Pick<ConfirmEntry, "studentSubjectId" | "type" | "occurredDate" | "chapterIds">,
+): Promise<AttachmentPreview> {
+  const { supabase, userId } = await currentUser();
+  return resolveAttachment(supabase, userId, entry);
+}
+
 /**
  * §5.3's "on confirm" - the one write that turns a reviewed parse into a
  * real result. Three things can't be one Postgres transaction with the rest,
@@ -280,7 +386,17 @@ async function moveScanImages(
 export async function confirmScanJob(
   jobId: string,
   entry: ConfirmEntry,
-  options?: { allowDuplicate?: boolean },
+  options?: {
+    allowDuplicate?: boolean;
+    /** "File as a new assessment" (§5.3) - skip resolveAttachment() entirely,
+     * even when it would otherwise find a match. */
+    forceNew?: boolean;
+    /** The student picked one of resolveAttachment()'s ctOptions by hand -
+     * use it instead of recomputing. `undefined` means "not overridden";
+     * unlike forceNew this is never `null` on its own (that's what forceNew
+     * is for). */
+    assessmentIdOverride?: string;
+  },
 ): Promise<ConfirmResult> {
   const { supabase, userId } = await currentUser();
 
@@ -332,64 +448,21 @@ export async function confirmScanJob(
   }
 
   // --- 1. Attach, or leave null and let confirm_scan_job create new. ---
-  let assessmentId: string | null = null;
+  let assessmentId: string | null;
 
-  if (entry.type === "CT") {
-    // "CT attaches to a scheduled assessment on that exact date... No
-    // fuzzy dates." A near-miss is deliberately not offered as a chooser
-    // here - that's a review-screen UI question of its own, not part of
-    // this transaction.
-    const { data: scheduled } = await supabase
-      .from("assessments")
-      .select("id, scheduled_date")
-      .eq("student_id", userId)
-      .eq("student_subject_id", entry.studentSubjectId)
-      .eq("type", "CT")
-      .eq("status", "scheduled");
-
-    const candidates: CTCandidate[] = (scheduled ?? [])
-      .filter((a): a is { id: string; scheduled_date: string } => a.scheduled_date !== null)
-      .map((a) => ({ id: a.id, scheduledDate: a.scheduled_date }));
-
-    assessmentId = findCTAttachment(candidates, entry.occurredDate).matchId;
+  if (options?.forceNew) {
+    // "File as a new assessment" (§5.3) - the escape hatch on both an
+    // auto-attach and a CT near-miss alike. The decision below is skipped
+    // entirely rather than computed and discarded, so a window this scan
+    // would otherwise have attached to is left untouched.
+    assessmentId = null;
+  } else if (options?.assessmentIdOverride !== undefined) {
+    // The student picked a specific CT from resolveAttachment()'s ctOptions
+    // (a near-miss the exact-date match didn't find) - that choice wins
+    // outright, no re-derivation.
+    assessmentId = options.assessmentIdOverride;
   } else {
-    // "CWM attaches to an open predicted window for that subject and
-    // type, with chapter as a tiebreak only, never a requirement." Phase 6
-    // (window opening) isn't built yet, so `windows` is empty in practice
-    // today - this still has to be wired correctly for when it isn't.
-    const { data: windows } = await supabase
-      .from("assessments")
-      .select("id, created_at")
-      .eq("student_id", userId)
-      .eq("student_subject_id", entry.studentSubjectId)
-      .eq("type", "CWM")
-      .eq("status", "predicted")
-      .is("window_closed_at", null);
-
-    if (windows && windows.length > 0) {
-      const { data: links } = await supabase
-        .from("assessment_chapters")
-        .select("assessment_id, chapter_id")
-        .in(
-          "assessment_id",
-          windows.map((w) => w.id),
-        );
-
-      const chaptersByAssessment = new Map<string, string[]>();
-      for (const link of links ?? []) {
-        const list = chaptersByAssessment.get(link.assessment_id) ?? [];
-        list.push(link.chapter_id);
-        chaptersByAssessment.set(link.assessment_id, list);
-      }
-
-      const candidates: CWMWindowCandidate[] = windows.map((w) => ({
-        id: w.id,
-        chapterIds: chaptersByAssessment.get(w.id) ?? [],
-        createdAt: w.created_at,
-      }));
-
-      assessmentId = findCWMAttachment(candidates, entry.chapterIds[0] ?? null).matchId;
-    }
+    assessmentId = (await resolveAttachment(supabase, userId, entry)).assessmentId;
   }
 
   // --- 2. One RPC - everything DB-side, atomically. ---

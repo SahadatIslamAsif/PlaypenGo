@@ -64,7 +64,7 @@ export function PageStrip({
                 type="button"
                 onClick={() => onToggleSame(page.id)}
                 aria-pressed={!page.sameAsPrevious}
-                className={`rounded-pill px-2.5 py-1 text-xs font-medium transition-colors ${
+                className={`rounded-pill px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   page.sameAsPrevious
                     ? "bg-surface-sunk text-muted"
                     : "bg-accent text-shell"

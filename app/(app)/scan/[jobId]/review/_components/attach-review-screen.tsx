@@ -112,7 +112,7 @@ export function AttachReviewScreen({
 
   return (
     <div className="flex flex-col gap-5 pb-nav-clear lg:pb-0">
-      <div className="flex flex-col gap-2">
+      <div className="sticky top-0 z-10 -mx-3 flex flex-col gap-2 bg-wash px-3 pb-2 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0">
         <h1 className="font-display text-xl font-semibold text-ink">Attach this paper</h1>
         <p className="text-sm text-muted">
           Filing evidence against the {type} already logged for {subjectName}
@@ -213,7 +213,7 @@ export function AttachReviewScreen({
         </Card>
       ) : null}
 
-      {saveError ? <p className="text-sm text-red-600">{saveError}</p> : null}
+      {saveError ? <p className="text-sm text-danger">{saveError}</p> : null}
 
       <div className="fixed inset-x-3 bottom-nav-clear z-20 sm:static sm:inset-auto">
         <Button type="button" onClick={handleSave} disabled={saving} className="w-full sm:w-auto">

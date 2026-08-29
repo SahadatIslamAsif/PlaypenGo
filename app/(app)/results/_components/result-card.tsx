@@ -1,8 +1,8 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { deleteResult } from "@/lib/assessments/actions";
 import { formatConverted, formatRaw } from "@/lib/assessments/marks";
 import type { ResultListItem } from "@/lib/assessments/list";
@@ -20,6 +20,8 @@ export function ResultCard({
   canAttach: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [zoomedIndex, setZoomedIndex] = useState<number | null>(null);
+  const zoomedUrl = zoomedIndex !== null ? item.imageUrls[zoomedIndex] : null;
 
   return (
     <div className="flex items-start justify-between gap-3 rounded-card border border-hairline bg-surface p-4 shadow-soft">
@@ -54,6 +56,17 @@ export function ResultCard({
             Attach paper
           </Link>
         ) : null}
+
+        {item.imageUrls.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setZoomedIndex(0)}
+            className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <ImageIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
+            View paper{item.imageUrls.length > 1 ? ` (${item.imageUrls.length} pages)` : ""}
+          </button>
+        ) : null}
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-1">
@@ -70,12 +83,70 @@ export function ResultCard({
             disabled={pending}
             onClick={() => startTransition(() => { deleteResult(item.resultId); })}
             aria-label="Delete result"
-            className="mt-1 flex h-8 w-8 items-center justify-center rounded-button text-muted transition-colors hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="mt-1 flex h-8 w-8 items-center justify-center rounded-button text-muted transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
           </button>
         ) : null}
       </div>
+
+      {zoomedUrl ? (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-ink/90 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Page ${(zoomedIndex ?? 0) + 1} of ${item.subjectName}`}
+          onClick={() => setZoomedIndex(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={zoomedUrl}
+            alt={`Page ${(zoomedIndex ?? 0) + 1}, full screen`}
+            className="max-h-[75vh] max-w-full object-contain"
+          />
+          {item.imageUrls.length > 1 ? (
+            <div className="flex items-center gap-4 text-shell">
+              <button
+                type="button"
+                aria-label="Previous page"
+                disabled={zoomedIndex === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomedIndex((i) => (i !== null ? Math.max(0, i - 1) : i));
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-surface text-ink disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+              <p className="text-sm">
+                Page {(zoomedIndex ?? 0) + 1} of {item.imageUrls.length}
+              </p>
+              <button
+                type="button"
+                aria-label="Next page"
+                disabled={zoomedIndex === item.imageUrls.length - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setZoomedIndex((i) =>
+                    i !== null ? Math.min(item.imageUrls.length - 1, i + 1) : i,
+                  );
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-surface text-ink disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setZoomedIndex(null)}
+            aria-label="Close"
+            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-[14px] bg-surface text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <X className="h-5 w-5" strokeWidth={1.5} />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

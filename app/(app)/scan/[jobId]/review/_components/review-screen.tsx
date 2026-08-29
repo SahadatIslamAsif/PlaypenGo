@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, X } from "lucide-react";
-import { useMemo, useState, type FocusEvent } from "react";
+import { useEffect, useMemo, useState, type FocusEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/select";
 import { previewMarks, type AssessmentType } from "@/lib/assessments/marks";
 import { matchCentreLine, type ChapterCandidate } from "@/lib/scans/centre-line";
 import { deriveConfidence, type Agreement } from "@/lib/scans/confidence";
-import { laterPageCandidates, resolveMarks } from "@/lib/scans/ladder";
+import { laterPageCandidates, page1Ellipses, resolveMarks } from "@/lib/scans/ladder";
 import { namesMatch } from "@/lib/scans/match";
 import {
   resolveInferredChapterId,
@@ -19,7 +19,13 @@ import {
   toMarkCandidates,
 } from "@/lib/scans/parse/adapt";
 import type { RawParse } from "@/lib/scans/parse/schema";
-import { attachScanJobToResult, confirmScanJob, type ConfirmEntry } from "@/lib/scans/actions";
+import {
+  attachScanJobToResult,
+  confirmScanJob,
+  previewAttachment,
+  type AttachmentPreview,
+  type ConfirmEntry,
+} from "@/lib/scans/actions";
 
 // §5.3's verification modal. Every value shown here comes from lib/scans/'s
 // own resolution layer, called once, up front - this component reads the
@@ -74,6 +80,13 @@ export function ReviewScreen({
     [markCandidates, headerMarks],
   );
   const laterCandidates = useMemo(() => laterPageCandidates(markCandidates), [markCandidates]);
+  // "Multiple ellipses on page 1 are rare. Take the first, surface the
+  // rest as candidates" (§5.3) - the ladder already takes the first; this
+  // is that "rest", which nothing showed until now.
+  const extraPage1Ellipses = useMemo(
+    () => page1Ellipses(markCandidates).slice(1),
+    [markCandidates],
+  );
 
   const centreLineText = useMemo(() => toCentreLineText(rawParse), [rawParse]);
   const centreLineResult = useMemo(
@@ -109,6 +122,14 @@ export function ReviewScreen({
   // never asked for.
   const typeConfidence =
     typeAgreement === "unknown" ? { highlighted: false } : deriveConfidence(1, typeAgreement);
+  // "Validate the weekday against the routine. A parsed date whose weekday
+  // has no period for that subject is almost certainly a DD/MM flip - flag
+  // it" (§5.3's Date section). subjectAgreement already *is* that weekday
+  // check - the Confidence section reuses the same comparison for the
+  // subject field, but the Date section names the date as what it's
+  // actually evidence about, so both fields read off it.
+  const dateConfidence =
+    subjectAgreement === "unknown" ? { highlighted: false } : deriveConfidence(1, subjectAgreement);
 
   // ---------------------------------------------------------------------
   // Editable state - seeded from the derived values above, never read
@@ -116,7 +137,14 @@ export function ReviewScreen({
   // freely regardless of confidence.
   const [obtained, setObtained] = useState(ladder.obtained !== null ? String(ladder.obtained) : "");
   const [total, setTotal] = useState(ladder.total !== null ? String(ladder.total) : "");
-  const [type, setType] = useState<AssessmentType>(rawParse.body_type_hint === "CT" ? "CT" : "CWM");
+  // "The scheduled-CT check is the stronger signal - prefer it over the
+  // visual one when they disagree, and flag the disagreement in the modal"
+  // (§5.3). typeAgreement is "disagree" exactly when a CT is scheduled for
+  // this subject/date and the paper itself doesn't read as CT - that's the
+  // one case the stronger signal overrides the visual read's own default.
+  const [type, setType] = useState<AssessmentType>(
+    typeAgreement === "disagree" || rawParse.body_type_hint === "CT" ? "CT" : "CWM",
+  );
   const [subjectId, setSubjectId] = useState(matchedSubjectId ?? subjectOptions[0]?.id ?? "");
   const [date, setDate] = useState(rawParse.header.date ?? "");
   // "Never auto-select a chapter below the confidence threshold" - pre-
@@ -134,6 +162,35 @@ export function ReviewScreen({
   // has been written yet at that point - this is a fork in the road, not an
   // error.
   const [duplicateResultId, setDuplicateResultId] = useState<string | null>(null);
+
+  // "The modal shows which window was matched, with 'file as a new
+  // assessment' always available" (§5.3, CWM) - and for CT, "If no CT
+  // matches the exact date but an open scheduled CT exists for that
+  // subject, list it in the modal as a selectable option... never
+  // auto-match, never hide." Re-checked (debounced) on every field this
+  // decision actually depends on, so editing the date or subject keeps the
+  // preview honest instead of showing what the original parse would have
+  // matched.
+  const [attachmentPreview, setAttachmentPreview] = useState<AttachmentPreview | null>(null);
+  const [forceNew, setForceNew] = useState(false);
+  const [selectedCtOption, setSelectedCtOption] = useState<string | null>(null);
+
+  useEffect(() => {
+    // The attachment decision only ever looks at subject, type, date and
+    // chapter - marks play no part in it, so unlike handleSave's own guard
+    // this doesn't wait on them.
+    if (!subjectId) return;
+    const timer = setTimeout(() => {
+      void previewAttachment({ studentSubjectId: subjectId, type, occurredDate: date, chapterIds }).then(
+        (result) => {
+          setAttachmentPreview(result);
+          setSelectedCtOption(null);
+        },
+      );
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chapterIds is an array; join() keeps the effect keyed on its contents, not a new reference every render
+  }, [subjectId, type, date, chapterIds.join(",")]);
 
   const preview =
     obtained !== "" && total !== "" ? previewMarks(Number(obtained), Number(total), type) : null;
@@ -175,7 +232,10 @@ export function ReviewScreen({
     setSaving(true);
     setSaveError(null);
 
-    const result = await confirmScanJob(jobId, buildEntry());
+    const result = await confirmScanJob(jobId, buildEntry(), {
+      forceNew,
+      assessmentIdOverride: selectedCtOption ?? undefined,
+    });
 
     if (result.error) {
       setSaving(false);
@@ -222,7 +282,11 @@ export function ReviewScreen({
     setSaving(true);
     setSaveError(null);
 
-    const result = await confirmScanJob(jobId, buildEntry(), { allowDuplicate: true });
+    const result = await confirmScanJob(jobId, buildEntry(), {
+      allowDuplicate: true,
+      forceNew,
+      assessmentIdOverride: selectedCtOption ?? undefined,
+    });
 
     if (result.error) {
       setSaving(false);
@@ -236,7 +300,11 @@ export function ReviewScreen({
   return (
     <div className="flex flex-col gap-5 pb-nav-clear lg:pb-0">
       {/* ---------------------------------------------------- thumbnail strip - pinned top, never side-by-side --- */}
-      <div className="flex flex-col gap-2">
+      {/* "The review screen cannot be side-by-side. Thumbnail strip pinned
+          at the top... fields scrolling beneath" (CLAUDE.md's Mobile
+          section) - sticky only below sm, where that constraint applies;
+          desktop has room to just let it scroll with everything else. */}
+      <div className="sticky top-0 z-10 -mx-3 flex flex-col gap-2 bg-wash px-3 pb-2 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0">
         <h1 className="font-display text-xl font-semibold text-ink">Check the result</h1>
         <div className="flex gap-3 overflow-x-auto pb-2">
           {rawParse.pages.map((page) => (
@@ -303,6 +371,17 @@ export function ReviewScreen({
           .
         </p>
         {marksConfidence.highlighted ? <ConfidenceNote /> : null}
+        {extraPage1Ellipses.length > 0 ? (
+          <div className="mt-3 flex flex-col gap-1 border-t border-hairline pt-3">
+            <p className="text-xs font-medium text-muted">Also circled on page 1, not used</p>
+            {extraPage1Ellipses.map((c, i) => (
+              <p key={i} className="text-xs text-muted">
+                {c.valueObtained}
+                {c.valueTotal !== null ? ` / ${c.valueTotal}` : ""} ({c.location})
+              </p>
+            ))}
+          </div>
+        ) : null}
         {laterCandidates.length > 0 ? (
           <div className="mt-3 flex flex-col gap-1 border-t border-hairline pt-3">
             <p className="text-xs font-medium text-muted">Also seen on a later page, not counted</p>
@@ -339,19 +418,27 @@ export function ReviewScreen({
       </Card>
 
       {/* -------------------------------------------------------------------------------------------- date --- */}
-      <Card>
+      <Card className={highlightClass(dateConfidence.highlighted)}>
         <Field label="Date" htmlFor="rv_date">
           <input
             id="rv_date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
+            onFocus={scrollIntoViewOnFocus}
             className="h-11 w-full rounded-button border border-hairline bg-surface px-3 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           />
         </Field>
         {rawParse.header.date_raw ? (
           <p className="mt-2 text-xs text-muted">Read as &quot;{rawParse.header.date_raw}&quot;.</p>
         ) : null}
+        {dateConfidence.highlighted ? (
+          <p className="mt-2 text-xs text-muted">
+            {subjectOptions.find((s) => s.id === subjectId)?.display_name ?? "This subject"} doesn&apos;t
+            meet on this weekday - worth checking for a day/month swap.
+          </p>
+        ) : null}
+        {dateConfidence.highlighted ? <ConfidenceNote /> : null}
       </Card>
 
       {/* -------------------------------------------------------------------------------------------- type --- */}
@@ -363,7 +450,7 @@ export function ReviewScreen({
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`h-11 flex-1 text-sm font-medium transition-colors ${
+                className={`h-11 flex-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   type === t ? "bg-ink text-shell" : "bg-surface text-body hover:bg-surface-sunk"
                 }`}
               >
@@ -425,6 +512,62 @@ export function ReviewScreen({
         {chapterConfidence.highlighted ? <ConfidenceNote /> : null}
       </Card>
 
+      {/* ---------------------------------------------------------------------------------- attachment --- */}
+      {attachmentPreview?.assessmentId ? (
+        <Card className="flex flex-col gap-2">
+          <p className="text-sm font-semibold text-ink">
+            {attachmentPreview.matchedBy === "ct-date"
+              ? "Will attach to the CT already scheduled for this date"
+              : attachmentPreview.matchedBy === "cwm-chapter"
+                ? "Will attach to the open CWM window for this chapter"
+                : "Will attach to the oldest open CWM window for this subject"}
+          </p>
+          <label className="flex items-center gap-2 text-sm text-body">
+            <input
+              type="checkbox"
+              checked={forceNew}
+              onChange={(e) => setForceNew(e.target.checked)}
+              className="h-4 w-4 rounded border-hairline accent-[color:var(--accent)]"
+            />
+            File as a new assessment instead
+          </label>
+        </Card>
+      ) : attachmentPreview && attachmentPreview.ctOptions.length > 0 ? (
+        <Card className="flex flex-col gap-2">
+          <p className="text-sm font-semibold text-ink">
+            No CT is scheduled for this exact date
+          </p>
+          <p className="text-xs text-muted">
+            Attach to one of this subject&apos;s other scheduled CTs instead - a postponement, maybe
+            - or leave it as a new assessment.
+          </p>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-body">
+              <input
+                type="radio"
+                name="ct_option"
+                checked={selectedCtOption === null}
+                onChange={() => setSelectedCtOption(null)}
+                className="h-4 w-4 accent-[color:var(--accent)]"
+              />
+              File as a new assessment
+            </label>
+            {attachmentPreview.ctOptions.map((option) => (
+              <label key={option.id} className="flex items-center gap-2 text-sm text-body">
+                <input
+                  type="radio"
+                  name="ct_option"
+                  checked={selectedCtOption === option.id}
+                  onChange={() => setSelectedCtOption(option.id)}
+                  className="h-4 w-4 accent-[color:var(--accent)]"
+                />
+                The CT scheduled for {option.scheduledDate}
+              </label>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
       {/* -------------------------------------------------------------------------------- name mismatch --- */}
       {!nameMatches ? (
         <Card className="flex flex-col gap-2 bg-tint-sage">
@@ -476,14 +619,14 @@ export function ReviewScreen({
           <button
             type="button"
             onClick={() => setDuplicateResultId(null)}
-            className="self-start text-xs text-tint-ink/80 hover:underline"
+            className="self-start text-xs text-tint-ink/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Never mind, let me edit first
           </button>
         </Card>
       ) : null}
 
-      {saveError ? <p className="text-sm text-red-600">{saveError}</p> : null}
+      {saveError ? <p className="text-sm text-danger">{saveError}</p> : null}
 
       {/* ---------------------------------------------------------------------------------------- save bar --- */}
       {/* Floating pill, not a boxed bar - same reasoning as scan-screen.tsx's

@@ -36,6 +36,11 @@ export type SubjectRow = { id: string; display_name: string };
 export type PaperRow = { id: string; name: string };
 export type ChapterRow = { id: string; name: string };
 
+/** One signed URL per confirmed page, already ordered by page_no - callers
+ * sign the scripts/ paths (private bucket) before this ever runs, since
+ * that's an async Supabase call and this stays a pure transform. */
+export type ResultImageRow = { result_id: string; url: string; page_no: number };
+
 export type ResultListItem = {
   resultId: string;
   assessmentId: string;
@@ -51,6 +56,11 @@ export type ResultListItem = {
   percentage: number;
   paperMissing: boolean;
   entryMode: "ocr" | "manual";
+  /** §5.3's evidence images - "the tutor and guardian may read it" (0021's
+   * result_images_select). Empty for a still-manual result, or one whose
+   * signed URL failed (lib/scans/storage.ts's own "missing image is not a
+   * reason to fail the screen" reasoning, extended here). */
+  imageUrls: string[];
 };
 
 /**
@@ -67,6 +77,7 @@ export function buildResultsList(
   papers: PaperRow[],
   chapters: ChapterRow[],
   assessmentChapters: AssessmentChapterRow[] = [],
+  resultImages: ResultImageRow[] = [],
 ): ResultListItem[] {
   const assessmentById = new Map(assessments.map((a) => [a.id, a]));
   const subjectById = new Map(subjects.map((s) => [s.id, s]));
@@ -78,6 +89,13 @@ export function buildResultsList(
     const list = chapterIdsByAssessment.get(link.assessment_id) ?? [];
     list.push(link.chapter_id);
     chapterIdsByAssessment.set(link.assessment_id, list);
+  }
+
+  const imageUrlsByResult = new Map<string, string[]>();
+  for (const image of [...resultImages].sort((a, b) => a.page_no - b.page_no)) {
+    const list = imageUrlsByResult.get(image.result_id) ?? [];
+    list.push(image.url);
+    imageUrlsByResult.set(image.result_id, list);
   }
 
   const items: ResultListItem[] = [];
@@ -105,6 +123,7 @@ export function buildResultsList(
       percentage: result.percentage,
       paperMissing: result.paper_missing,
       entryMode: result.entry_mode,
+      imageUrls: imageUrlsByResult.get(result.id) ?? [],
     });
   }
 
@@ -117,4 +136,32 @@ export function filterBySubject(
 ): ResultListItem[] {
   if (!subjectId) return items;
   return items.filter((item) => item.subjectId === subjectId);
+}
+
+/**
+ * "No results yet" reads the same to a guardian whether nothing has come up
+ * to log, or three papers happened last week and nobody's logged them - two
+ * situations that look identical but mean very different things (CLAUDE.md's
+ * quality floor). An assessment reaches 'logged' only via a result insert
+ * (0013's results_mark_assessment_logged trigger), so any assessment still
+ * sitting at 'occurred', or at 'scheduled' with its date already past, has
+ * no result yet - unlogged, not merely "nothing due". This is exactly that
+ * count, so the empty state can tell the two apart.
+ */
+export type UnloggedAssessmentRow = {
+  student_subject_id: string;
+  status: string;
+  scheduled_date: string | null;
+};
+
+export function countUnlogged(
+  assessments: UnloggedAssessmentRow[],
+  subjectId: string | null,
+  today: string,
+): number {
+  return assessments.filter((a) => {
+    if (subjectId && a.student_subject_id !== subjectId) return false;
+    if (a.status === "occurred") return true;
+    return a.status === "scheduled" && a.scheduled_date !== null && a.scheduled_date < today;
+  }).length;
 }

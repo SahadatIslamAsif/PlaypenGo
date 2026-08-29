@@ -8,7 +8,7 @@ const base =
 const variants: Record<Variant, string> = {
   primary: "bg-ink text-shell hover:bg-ink/90",
   secondary: "border border-hairline bg-surface text-ink hover:bg-surface-sunk",
-  destructive: "bg-white text-red-600 border border-red-200 hover:bg-red-50",
+  destructive: "bg-surface text-danger border border-danger-border hover:bg-danger-tint",
 };
 
 export function Button({

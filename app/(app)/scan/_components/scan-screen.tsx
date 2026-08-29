@@ -123,17 +123,40 @@ export function ScanScreen({
     setZoomedId(null);
   }
 
-  function triggerParse(jobId: string) {
-    // Fire-and-forget, not awaited: the route itself does the up-to-60s
-    // Gemini call, and this component learns the outcome by polling
-    // scan_jobs directly, not from this request's own response. keepalive
-    // so the request is still sent even if the tab closes right after -
-    // "safe to close the tab and come back" starts here.
-    void fetch(`/api/scan-jobs/${jobId}/parse`, { method: "POST", keepalive: true }).catch(() => {
+  async function parseOne(jobId: string) {
+    // The route itself does the up-to-60s Gemini call and this component
+    // learns the outcome by polling scan_jobs directly, not from this
+    // request's own response - awaiting it here is only so a caller with
+    // several jobs can wait for one to finish before starting the next.
+    // keepalive so the request is still sent even if the tab closes right
+    // after - "safe to close the tab and come back" starts here.
+    try {
+      await fetch(`/api/scan-jobs/${jobId}/parse`, { method: "POST", keepalive: true });
+    } catch {
       // A network failure to even reach the route isn't fatal - the job
       // stays 'parsing' and the poll below will keep checking; "Retry"
       // on a job that never left 'parsing' just fires this again.
-    });
+    }
+  }
+
+  function triggerParse(jobId: string) {
+    void parseOne(jobId);
+  }
+
+  /**
+   * §5.3: "One assessment at a time, one Gemini call per assessment.
+   * Sequential, never parallel." Splitting several papers into one Done
+   * click (the same/new-paper toggle) is the one place that rule was at
+   * risk - each paper's own upload loop already runs to completion before
+   * the next starts, but triggerParse() itself was fire-and-forget, so nothing
+   * stopped two papers' parses from being in flight together. Awaiting
+   * parseOne() here serialises the actual Gemini calls; the void call at
+   * the bottom keeps Done itself from blocking on however many are queued.
+   */
+  async function triggerParsesSequentially(jobIds: string[]) {
+    for (const jobId of jobIds) {
+      await parseOne(jobId);
+    }
   }
 
   async function handleDone() {
@@ -148,6 +171,7 @@ export function ScanScreen({
     // the toggle happens to hold.
     const papers = attachTarget ? [pages] : groupIntoPapers(pages);
     const newJobs: SubmittedJob[] = [];
+    const jobIdsToParse: string[] = [];
 
     for (const paper of papers) {
       const jobId = crypto.randomUUID();
@@ -188,9 +212,10 @@ export function ScanScreen({
       }
 
       newJobs.push({ id: jobId, status: "parsing", error: null });
-      triggerParse(jobId);
+      jobIdsToParse.push(jobId);
     }
 
+    void triggerParsesSequentially(jobIdsToParse);
     setSubmittedJobs((prev) => [...prev, ...newJobs]);
     pages.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     setPages([]);
@@ -302,7 +327,7 @@ export function ScanScreen({
         />
       </div>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       {submittedJobs.length > 0 ? (
         <div className="flex flex-col gap-2">

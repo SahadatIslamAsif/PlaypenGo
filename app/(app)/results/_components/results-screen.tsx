@@ -13,7 +13,12 @@ import {
 } from "./manual-entry-sheet";
 import { ResultCard } from "./result-card";
 import { SubjectFilterChips } from "./subject-filter-chips";
-import { filterBySubject, type ResultListItem } from "@/lib/assessments/list";
+import {
+  countUnlogged,
+  filterBySubject,
+  type ResultListItem,
+  type UnloggedAssessmentRow,
+} from "@/lib/assessments/list";
 import type { SubjectSeries } from "@/lib/assessments/series";
 
 export function ResultsScreen({
@@ -21,6 +26,7 @@ export function ResultsScreen({
   editable,
   canDelete,
   items,
+  unloggedAssessments,
   series,
   today,
   subjects,
@@ -31,6 +37,12 @@ export function ResultsScreen({
   editable: boolean;
   canDelete: boolean;
   items: ResultListItem[];
+  /** Everything results itself can't show: an assessment past its date (or
+   * confirmed via §7.6's "did this happen?") with no result yet. Read
+   * alongside `items.length === 0` so the empty state can tell "nothing has
+   * come up" apart from "papers happened and nobody's logged them" -
+   * CLAUDE.md's quality floor, and the whole reason this prop exists. */
+  unloggedAssessments: UnloggedAssessmentRow[];
   series: SubjectSeries[];
   today: string;
   subjects: SubjectOption[];
@@ -42,6 +54,7 @@ export function ResultsScreen({
 
   const filtered = filterBySubject(items, subjectFilter);
   const filterOptions = subjects.filter((s) => items.some((i) => i.subjectId === s.id));
+  const unloggedCount = countUnlogged(unloggedAssessments, subjectFilter, today);
 
   return (
     <div className="flex flex-col gap-5 pb-nav-clear lg:pb-0">
@@ -65,12 +78,25 @@ export function ResultsScreen({
 
       {filtered.length === 0 ? (
         <Card>
-          <p className="text-sm font-semibold text-ink">No results yet</p>
-          <p className="mt-1 text-sm text-muted">
-            {editable
-              ? "Log a result to start tracking, or scan a paper once scanning ships."
-              : "Nothing has been logged for this subject yet."}
-          </p>
+          {unloggedCount > 0 ? (
+            <>
+              <p className="text-sm font-semibold text-ink">
+                {unloggedCount} unlogged {unloggedCount === 1 ? "paper" : "papers"}
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                {editable
+                  ? "These have already happened - scan or log them to keep the record current."
+                  : "These have already happened but haven't been logged yet."}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-ink">No results yet</p>
+              <p className="mt-1 text-sm text-muted">
+                {editable ? "Scan a paper to start tracking." : "Nothing has come up to log yet."}
+              </p>
+            </>
+          )}
         </Card>
       ) : (
         <div className="flex flex-col gap-3">

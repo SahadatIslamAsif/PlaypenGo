@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { ResultsScreen } from "./_components/results-screen";
-import { buildResultsList } from "@/lib/assessments/list";
+import { buildResultsList, type ResultImageRow } from "@/lib/assessments/list";
 import { toWeeklySeries } from "@/lib/assessments/series";
 import { localDate } from "@/lib/routines/schedule";
+import { signScriptImage } from "@/lib/scans/storage";
 import { resolveViewedStudentId } from "@/lib/students/resolve";
 import { createClient } from "@/lib/supabase/server";
 
@@ -94,6 +95,27 @@ export default async function ResultsPage({
   const resultRows = (results ?? []).map((r) => ({ ...r, entry_mode: r.entry_mode as "ocr" | "manual" }));
   const assessmentChapterRows = assessmentChapters ?? [];
 
+  // §5.3's evidence images - nothing displayed them behind a logged mark
+  // anywhere until now. result_images_select (0021) already widens to
+  // can_read_student(), so the guardian and tutor get exactly the same
+  // signed URLs a student would; only the student ever gets a Delete.
+  const resultIds = resultRows.map((r) => r.id);
+  const { data: resultImageRows } = resultIds.length
+    ? await supabase
+        .from("result_images")
+        .select("result_id, storage_path, page_no")
+        .in("result_id", resultIds)
+    : { data: [] };
+
+  const resultImages: ResultImageRow[] = (
+    await Promise.all(
+      (resultImageRows ?? []).map(async (row) => {
+        const url = await signScriptImage(supabase, row.storage_path);
+        return url ? { result_id: row.result_id, url, page_no: row.page_no } : null;
+      }),
+    )
+  ).filter((row): row is ResultImageRow => row !== null);
+
   const items = buildResultsList(
     resultRows,
     assessmentRows,
@@ -101,6 +123,7 @@ export default async function ResultsPage({
     paperRows,
     chapterRows,
     assessmentChapterRows,
+    resultImages,
   );
   const series = toWeeklySeries(resultRows, assessmentRows, subjectRows);
 
@@ -110,6 +133,7 @@ export default async function ResultsPage({
       editable={editable}
       canDelete={canDelete}
       items={items}
+      unloggedAssessments={assessmentRows}
       series={series}
       today={localDate(new Date())}
       subjects={subjectRows}

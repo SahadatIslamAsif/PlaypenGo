@@ -13,6 +13,12 @@
   --muted: #8a9a92;
   --hairline: #e6efe9;
   --accent: #1b7a50;
+  /* red-600. Passes AA (5.2:1) on --surface's white; the dark variant below
+     is red-400, not the same hex, because red-600 only clears 3.5:1 against
+     --wash/--surface's near-black dark values - too low for 14px error text. */
+  --danger: #dc2626;
+  --danger-border: #fecaca;
+  --danger-tint: #fef2f2;
 
   --tint-mint: #dcf0e2;
   --tint-sage: #e6f1d9;
@@ -55,6 +61,11 @@
   --muted: #8ca398;
   --hairline: #22352c;
   --accent: #5fd79a;
+  /* red-400: 6.5:1 against --wash/--surface's #0b1310/#16241d - red-600
+     itself does not clear AA that dark. */
+  --danger: #f87171;
+  --danger-border: #7f1d1d;
+  --danger-tint: rgba(248, 113, 113, 0.12);
 }
 
 @theme inline {
@@ -67,6 +78,9 @@
   --color-muted: var(--muted);
   --color-hairline: var(--hairline);
   --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-danger-border: var(--danger-border);
+  --color-danger-tint: var(--danger-tint);
 
   --color-tint-mint: var(--tint-mint);
   --color-tint-sage: var(--tint-sage);
