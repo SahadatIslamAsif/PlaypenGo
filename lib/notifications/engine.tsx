@@ -594,7 +594,9 @@ async function loadWeekInReview(
   const [{ data: results }, { data: chapters }] = await Promise.all([
     supabase
       .from("results")
-      .select("percentage, assessments!inner(student_subject_id, occurred_date)")
+      .select(
+        "percentage, assessments!inner(id, student_subject_id, occurred_date, assessment_chapters(chapters(name)))",
+      )
       .eq("student_id", studentId)
       .gte("assessments.occurred_date", weekStart),
     supabase
@@ -638,13 +640,40 @@ async function loadWeekInReview(
 
   if (subjectAverages.length === 0 && coverage.length === 0) return null;
 
-  // Chapter-level best and weakest need the chapter behind each result, which
-  // §7.4 asks for but the schema only reaches through assessment_chapters. Left
-  // null when there is nothing to say rather than reported as a zero.
+  // §7.4 section 7's "best and weakest chapters". A chapter's score is the mean
+  // of the results filed against it, because 0017 made the link many-to-many:
+  // one CT can span three chapters and carries ONE combined mark, so that mark
+  // counts toward each of them. Crude — the paper does not say which chapter
+  // lost the marks — but it is the only honest reading of a combined score, and
+  // it is what makes a repeatedly-weak chapter surface across several weeks.
+  const byChapter = new Map<string, number[]>();
+  for (const row of results ?? []) {
+    const a = row.assessments as unknown as {
+      assessment_chapters?: { chapters?: { name: string } | null }[] | null;
+    };
+    for (const link of a.assessment_chapters ?? []) {
+      const name = link.chapters?.name;
+      if (!name) continue;
+      byChapter.set(name, [...(byChapter.get(name) ?? []), Number(row.percentage)]);
+    }
+  }
+
+  const ranked = [...byChapter.entries()]
+    .map(([chapter, values]) => ({
+      chapter,
+      percentage: values.reduce((sum, v) => sum + v, 0) / values.length,
+    }))
+    .sort((a, b) => b.percentage - a.percentage);
+
+  // One chapter is not a best and a weakest at once. Reporting the same line
+  // twice under opposite headings reads as a bug, and it is: with a single
+  // chapter there is nothing to compare.
+  const hasSpread = ranked.length > 1;
+
   return {
     subjectAverages,
-    bestChapter: null,
-    weakestChapter: null,
+    bestChapter: hasSpread ? ranked[0] : null,
+    weakestChapter: hasSpread ? ranked[ranked.length - 1] : null,
     coverage,
   };
 }
