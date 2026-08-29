@@ -19,6 +19,7 @@ import {
   toMarkCandidates,
 } from "@/lib/scans/parse/adapt";
 import type { RawParse } from "@/lib/scans/parse/schema";
+import { confirmScanJob } from "@/lib/scans/actions";
 
 // §5.3's verification modal. Every value shown here comes from lib/scans/'s
 // own resolution layer, called once, up front - this component reads the
@@ -28,12 +29,12 @@ import type { RawParse } from "@/lib/scans/parse/schema";
 //
 // "Every field editable, always" (§5.3) - a field's own confidence never
 // gates whether it can be changed, only whether it starts out flagged for
-// a second look. Nothing here calls a save yet - handleSave is a stub,
-// same as scan-screen.tsx's Done was before its own wiring pass.
+// a second look.
 
 export type SubjectOption = { id: string; display_name: string };
 
 export function ReviewScreen({
+  jobId,
   rawParse,
   pageImages,
   seededChapters,
@@ -43,6 +44,7 @@ export function ReviewScreen({
   subjectAgreement,
   typeAgreement,
 }: {
+  jobId: string;
   rawParse: RawParse;
   /** One signed URL per page, same order as rawParse.pages. An empty string
    * stands in for a page whose image couldn't be loaded. */
@@ -125,6 +127,8 @@ export function ReviewScreen({
   );
   const [nameConfirmed, setNameConfirmed] = useState(false);
   const [zoomedPage, setZoomedPage] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const preview =
     obtained !== "" && total !== "" ? previewMarks(Number(obtained), Number(total), type) : null;
@@ -133,9 +137,50 @@ export function ReviewScreen({
     setChapterIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
   }
 
-  function handleSave() {
-    // Persisting through confirm_scan_job (§5.3's "on confirm") is the
-    // next pass - this screen's shape has to be judged first.
+  async function handleSave() {
+    if (saving) return;
+    if (!subjectId) {
+      setSaveError("Choose a subject.");
+      return;
+    }
+    if (obtained === "" || total === "") {
+      setSaveError("Enter both marks.");
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+
+    const result = await confirmScanJob(jobId, {
+      studentSubjectId: subjectId,
+      paperId: null,
+      type,
+      // Editable, so this is whatever the field reads by Save, not the
+      // original parse - "every field editable, always" (§5.3).
+      occurredDate: date,
+      rawObtained: Number(obtained),
+      rawTotal: Number(total),
+      chapterIds,
+      // The recorded fact, not gated on nameConfirmed - the checkbox is an
+      // acknowledgement, not a second vote on what actually happened.
+      nameMismatch: !nameMatches,
+      parsedStudentName: !nameMatches ? rawParse.header.student_name : null,
+      ocrConfidence: rawParse.confidence,
+    });
+
+    if (result.error) {
+      setSaving(false);
+      setSaveError(result.error);
+      return;
+    }
+
+    // Success leaves `saving` true rather than resetting it: confirmScanJob
+    // just changed this job's status, and calling a Server Action from a
+    // Client Component refreshes this route's server tree automatically -
+    // page.tsx re-renders into its own 'confirmed' branch (the real success
+    // view, reading the saved result back from the DB) and replaces this
+    // component outright. Flipping the button back to live between now and
+    // then would just risk a double-submit for no visible benefit.
   }
 
   const zoomedImage = zoomedPage !== null ? pageImages[zoomedPage - 1] : null;
@@ -356,6 +401,8 @@ export function ReviewScreen({
         </Card>
       ) : null}
 
+      {saveError ? <p className="text-sm text-red-600">{saveError}</p> : null}
+
       {/* ---------------------------------------------------------------------------------------- save bar --- */}
       {/* Floating pill, not a boxed bar - same reasoning as scan-screen.tsx's
           Done: no bg-surface/border wrapper reading as a white frame, no
@@ -364,8 +411,8 @@ export function ReviewScreen({
           not new padding invented here. Never disabled by an unconfirmed
           name mismatch - "does not block" (§5.3). */}
       <div className="fixed inset-x-3 bottom-nav-clear z-20 sm:static sm:inset-auto">
-        <Button type="button" onClick={handleSave} className="w-full sm:w-auto">
-          Save result
+        <Button type="button" onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+          {saving ? "Saving…" : "Save result"}
         </Button>
       </div>
 

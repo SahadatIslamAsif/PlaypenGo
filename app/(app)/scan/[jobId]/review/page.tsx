@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ReviewScreen, type SubjectOption } from "./_components/review-screen";
 import { Card } from "@/components/ui/card";
 import { resolveSubject, type SubjectCandidate } from "@/lib/routines/resolve";
@@ -37,7 +38,7 @@ export default async function ScanReviewPage({
   // own simply doesn't come back - no separate ownership check needed.
   const { data: job } = await supabase
     .from("scan_jobs")
-    .select("id, status, error, raw_parse")
+    .select("id, status, error, raw_parse, result_id")
     .eq("id", jobId)
     .maybeSingle();
 
@@ -48,6 +49,37 @@ export default async function ScanReviewPage({
         <p className="mt-1 text-sm text-muted">
           This link doesn&apos;t match a paper you&apos;ve scanned.
         </p>
+      </Card>
+    );
+  }
+
+  // Server Actions refresh this route's server tree once confirmScanJob
+  // returns, so this branch - not review-screen.tsx's own client-side
+  // "saved" state - is what the student actually sees right after Save.
+  // It has to read the real result rather than show a generic line, and it
+  // has to work identically on a cold revisit of the same link later.
+  if (job.status === "confirmed" && job.result_id) {
+    const { data: result } = await supabase
+      .from("results")
+      .select("converted, percentage")
+      .eq("id", job.result_id)
+      .maybeSingle();
+
+    return (
+      <Card>
+        <p className="text-sm font-semibold text-ink">Result saved</p>
+        {result ? (
+          <p className="mt-1 text-sm text-body">
+            {result.converted !== null ? result.converted.toFixed(1) : "—"}
+            {result.percentage !== null ? ` · ${result.percentage}%` : ""}
+          </p>
+        ) : null}
+        <Link
+          href="/results"
+          className="mt-4 inline-flex h-10 items-center justify-center rounded-button bg-ink px-4 text-sm font-medium text-shell transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          View results
+        </Link>
       </Card>
     );
   }
@@ -170,6 +202,7 @@ export default async function ScanReviewPage({
 
   return (
     <ReviewScreen
+      jobId={jobId}
       rawParse={rawParse}
       pageImages={pageImages.map((url) => url ?? "")}
       seededChapters={chapters ?? []}
