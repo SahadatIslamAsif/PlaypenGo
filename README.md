@@ -19,7 +19,7 @@
 - **How it stays honest:** nothing an AI extracts reaches the database without passing through a human review screen. Every field stays editable. The app converts raw scores to the school's scales so a teacher only ever writes the mark they actually gave.
 - **Who it is for:** one student, their guardian, and their tutor — three roles with genuinely different permissions, not one account shared three ways.
 
-> Building on this? `CLAUDE.md` holds the working rules for the codebase, and `docs/ARCHITECTURE.md` is the full architecture reference with the reasoning behind each decision.
+> Building on this? `README.md` holds the working rules for the codebase, and `docs/ARCHITECTURE.md` is the full architecture reference with the reasoning behind each decision.
 
 ---
 
