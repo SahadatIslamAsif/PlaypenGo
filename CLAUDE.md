@@ -4,7 +4,7 @@
 
 Repo/package name: `playpengo`. Use "PlaypenGo" (no space, capital P twice) in UI copy, the PWA manifest, and email subject lines/sender name.
 
-Full build specification: **@docs/SPEC.md** — read the relevant section before implementing a feature. Do not re-derive decisions that are already settled there.
+Full architecture reference: **@docs/ARCHITECTURE.md** — read the relevant section before implementing a feature. Do not re-derive decisions that are already settled there. (A private `docs/SPEC.md` also exists locally with the real routine, syllabus, and session notes; it is gitignored and never committed — ARCHITECTURE.md is the version any session should actually read from.)
 
 ---
 
