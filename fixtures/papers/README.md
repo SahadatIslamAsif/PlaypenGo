@@ -91,7 +91,7 @@ mode is already understood rather than being new signal:**
   either. Token-subset is correct for what `namesMatch` actually has to do
   in production: catch a genuinely *different* name on a scanned paper. It
   cannot, and structurally never will, tolerate a spelling *variant* within
-  one token — `"Hassan"` and `"Hasan"` off the same handwriting are two
+  one token — `"Hasan"` and `"Hassan"` off the same handwriting are two
   different tokens, not a subset relationship, so a run that transcribes
   the name differently each time fails here even on the right paper.
   Loosening `namesMatch` itself would weaken the real §5.3 name-mismatch

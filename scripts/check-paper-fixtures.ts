@@ -74,7 +74,7 @@ function skipped(path: string, reason: string): FieldResult {
 //     per §5.3 ("Use token-subset matching, not whole-string edit
 //     distance"), which is correct for its real job: catching a genuinely
 //     different name on a paper. It does not, and structurally cannot,
-//     tolerate a spelling VARIANT within a token - "Hassan" and "Hasan"
+//     tolerate a spelling VARIANT within a token - "Hasan" and "Hassan"
 //     are two different tokens, not a subset relationship, so a run that
 //     transcribes the same handwriting differently each time will fail
 //     here even though it found the right student. Loosening namesMatch
@@ -131,7 +131,7 @@ function compareHeader(actual: RawHeader, expected: RawHeader): FieldResult[] {
           actual: actual.student_name,
           category: "known_limitation",
           reason:
-            "compared via namesMatch (token-subset, lib/scans/match.ts), not string equality - but a spelling variant within one token (e.g. Hassan/Hasan) still fails, since that's a different token, not a subset. See KNOWN_LIMITATIONS above.",
+            "compared via namesMatch (token-subset, lib/scans/match.ts), not string equality - but a spelling variant within one token (e.g. Hasan/Hassan) still fails, since that's a different token, not a subset. See KNOWN_LIMITATIONS above.",
         };
 
   return [

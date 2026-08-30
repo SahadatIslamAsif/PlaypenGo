@@ -19,7 +19,7 @@ describe("namesMatch", () => {
   });
 
   it("fails on a genuinely different name, not just a different length", () => {
-    expect(namesMatch("Rakin Ahmed", "Rakib Chowdhury")).toBe(false);
+    expect(namesMatch("Tanvir Ahmed", "Rakib Chowdhury")).toBe(false);
   });
 
   it("is not fooled by whole-string edit distance on a short surname swap", () => {

@@ -18,7 +18,7 @@ create table public.profiles (
   email         text not null,
   class_level   int check (class_level between 1 and 12),
   section       text,
-  school        text not null default 'Playpen',
+  school        text,
   session_label text,
   timezone      text not null default 'Asia/Dhaka',
   created_at    timestamptz not null default now(),
@@ -43,10 +43,16 @@ create table public.tutor_allowlist (
   created_at timestamptz not null default now()
 );
 
--- §1: the tutor is the app owner and there is exactly one in v1. Change this
--- address, or insert more rows, to authorise another tutor account.
-insert into public.tutor_allowlist (email, note)
-values ('tutor.a@example.test', 'App owner — the single tutor in v1 (SPEC.md §1).');
+-- §1: the tutor is the app owner and there is exactly one in v1. No row is
+-- seeded here on purpose — a real address baked into a migration runs in
+-- every environment this schema is ever applied to, forever, which is wrong
+-- for a value that is specific to one deployment, not to the schema. The
+-- real environment's tutor is allowlisted separately, at deploy time, by
+-- scripts/seed-tutor-allowlist.ts reading TUTOR_ALLOWLIST_EMAIL - the same
+-- service-role-key, run-by-hand pattern scripts/seed-subjects-catalog.ts
+-- already uses for a table this one shares the "no client-writable policy"
+-- shape with. supabase/seed.sql seeds its own fixture row directly for local
+-- dev and pgTAP, scoped to its own fake tutor account.
 
 -- ------------------------------------------------------------- link codes ---
 

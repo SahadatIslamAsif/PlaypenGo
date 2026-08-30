@@ -76,8 +76,12 @@ grant execute on all functions in schema tests to authenticated, anon, service_r
 -- matching public.profiles row. Profiles are therefore never inserted directly
 -- here — doing so would test a schema the application never produces.
 --
--- The tutor's address must be the one 0002 seeds into tutor_allowlist, or
--- handle_new_user() refuses the signup.
+-- 0002 no longer seeds tutor_allowlist itself (a real address baked into a
+-- migration would run in every environment forever — see its own comment).
+-- This fixture's tutor is fake like every other seeded account, so it
+-- allowlists its own address here, scoped to local dev and pgTAP only.
+insert into public.tutor_allowlist (email, note)
+values ('tutor.a@example.test', 'local fixture tutor');
 
 -- GoTrue's Go string scanner errors on NULL for the token columns below (it
 -- expects '', never NULL) — a real signup then trips over any fixture row
