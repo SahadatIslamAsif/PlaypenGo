@@ -45,10 +45,12 @@ export default async function ResultsPage({
 
   // §3.3: logging a result is the student's act alone, so this gates only the
   // entry sheet. The tutor's one write — correcting a mark already on the
-  // screen — has no affordance yet; it arrives with the tutor dashboard in
-  // Phase 7, and 0018's results_update is what will authorize it.
+  // screen, per 0018's results_update — is `canCorrect` below; a tutor
+  // viewing this page via /tutor/[studentId]'s "View all results" link (or
+  // `?student=`) gets that instead of `editable`/`canDelete`.
   const editable = role === "student";
   const canDelete = role === "student";
+  const canCorrect = role === "tutor";
 
   const [
     { data: subjects },
@@ -132,6 +134,7 @@ export default async function ResultsPage({
       studentId={studentId}
       editable={editable}
       canDelete={canDelete}
+      canCorrect={canCorrect}
       items={items}
       unloggedAssessments={assessmentRows}
       series={series}

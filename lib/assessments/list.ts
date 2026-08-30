@@ -154,14 +154,29 @@ export type UnloggedAssessmentRow = {
   scheduled_date: string | null;
 };
 
+/**
+ * The rows themselves, not just the count - the tutor drill-down (Phase 7)
+ * lists what's unlogged rather than only counting it, so this is factored
+ * out as the one predicate both read. `countUnlogged` below is `.length` of
+ * this, kept as its own export since every existing call site (the results
+ * screen, the dashboard) only ever wanted the number.
+ */
+export function listUnlogged<T extends UnloggedAssessmentRow>(
+  assessments: T[],
+  subjectId: string | null,
+  today: string,
+): T[] {
+  return assessments.filter((a) => {
+    if (subjectId && a.student_subject_id !== subjectId) return false;
+    if (a.status === "occurred") return true;
+    return a.status === "scheduled" && a.scheduled_date !== null && a.scheduled_date < today;
+  });
+}
+
 export function countUnlogged(
   assessments: UnloggedAssessmentRow[],
   subjectId: string | null,
   today: string,
 ): number {
-  return assessments.filter((a) => {
-    if (subjectId && a.student_subject_id !== subjectId) return false;
-    if (a.status === "occurred") return true;
-    return a.status === "scheduled" && a.scheduled_date !== null && a.scheduled_date < today;
-  }).length;
+  return listUnlogged(assessments, subjectId, today).length;
 }

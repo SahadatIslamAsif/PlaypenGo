@@ -39,12 +39,13 @@ export const CWM_WINDOW_OCCURRENCES = 4;
 /** §3.2's four alert kinds. */
 export type AlertKind = "advance" | "night_before" | "confirm" | "unlogged";
 
-/** §7.5's four close reasons, as constrained by migration 0020. */
+/** §7.5's five close reasons, as constrained by migrations 0020 and 0028. */
 export type WindowCloseReason =
   | "result_logged"
   | "two_no_in_a_row"
   | "window_exhausted"
-  | "ct_cancelled";
+  | "ct_cancelled"
+  | "never_reached";
 
 export type ConfirmAnswer = "yes" | "no";
 
@@ -160,11 +161,51 @@ export function closesForTwoNoInARow(alerts: ExistingAlert[]): boolean {
  *
  * A window with no occurrences at all — a subject the routine never mentions —
  * is not exhausted, it is unopenable, and the caller never gets this far.
+ *
+ * This is a fact about dates only — "have all four occurrences passed" — and
+ * says nothing about whether the engine was ever actually running to ask about
+ * any of them. `closeReasonForExhaustion` below is what tells those two
+ * situations apart; this function stays exactly what its name says.
  */
 export function isExhausted(occurrences: string[], today: string): boolean {
   if (occurrences.length === 0) return false;
   const last = occurrences[occurrences.length - 1];
   return today > last;
+}
+
+/**
+ * `window_exhausted` vs `never_reached` — both fire only once `isExhausted`
+ * is already true, and both retire the window the same way; the only question
+ * is which sentence honestly describes what happened.
+ *
+ * §7.3/§7.5 wrote `window_exhausted` to mean "we asked about all four
+ * occurrences and got no result" — the four-occurrence cap doing the same job
+ * the old flat 14-day expiry used to. That reading assumes the engine was
+ * actually running while the window was open. It was not designed against a
+ * gap between nightly runs: a Supabase free project pausing after ~7 days of
+ * inactivity (§2), a broken cron-job.org schedule, a paused Vercel account —
+ * any of these can mean the very first time the engine looks at a window is
+ * already after every one of its occurrences has passed. `isExhausted` is
+ * still true in that case, but nothing was ever asked, and reporting
+ * `window_exhausted` would tell a tutor "the student never confirmed a paper
+ * that was asked about four times", when the honest story is "this was never
+ * reached by a running instance of the app".
+ *
+ * The distinguishing fact is already sitting in `alerts`, no new state
+ * required: a window the engine genuinely watched night to night has a
+ * `confirm` row for at least one occurrence, minted the evening that
+ * occurrence's date arrived (advanceWindows's confirm loop runs on every live
+ * night). A window the engine never got to touch before hitting exhaustion on
+ * first contact has none at all — not even one. Partial engagement (a `confirm`
+ * exists for some but not all occurrences, e.g. a shorter gap mid-window)
+ * counts as reached: the engine was running for at least part of this
+ * window's life, which is what `window_exhausted` is actually claiming.
+ */
+export function closeReasonForExhaustion(
+  alerts: ExistingAlert[],
+): "window_exhausted" | "never_reached" {
+  const everAsked = alerts.some((a) => a.kind === "confirm");
+  return everAsked ? "window_exhausted" : "never_reached";
 }
 
 /**
@@ -191,7 +232,7 @@ export function planWindow(input: WindowInput): WindowPlan {
   }
 
   if (isExhausted(occurrences, today)) {
-    return { ...idle, close: "window_exhausted" };
+    return { ...idle, close: closeReasonForExhaustion(alerts) };
   }
 
   // §7.6: a Yes sets the assessment to 'occurred' and creates a pending-result
@@ -211,7 +252,21 @@ export function planWindow(input: WindowInput): WindowPlan {
           // the 8pm digest, and waiting a further day asks about a paper the
           // student may already be holding.
           date <= today &&
-          !alerts.some((a) => a.kind === "confirm" && a.target_date === date),
+          // "Asked" means delivered, not merely written. A row's mere
+          // existence is not enough to exclude it — the caller writes a
+          // confirm row (and mints its token) before it knows whether
+          // tonight's digest email will actually send, so a row with
+          // last_sent_at still null represents a question that was reserved
+          // but never reached anyone, and must be re-offered. `answer` is
+          // checked too, defensively: answering at all is only possible once
+          // the question actually reached someone, whatever this row's own
+          // delivery bookkeeping says.
+          !alerts.some(
+            (a) =>
+              a.kind === "confirm" &&
+              a.target_date === date &&
+              (a.last_sent_at !== null || a.answer != null),
+          ),
       );
 
   if (confirmedHappened) return { ...idle, confirms };

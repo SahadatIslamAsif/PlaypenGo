@@ -119,29 +119,32 @@ export async function updateChapterStatus(chapterId: string, status: string) {
   return { error: null };
 }
 
-export async function deleteSubject(formData: FormData) {
+export async function deleteSubject(id: string): Promise<ActionState> {
   const { supabase } = await currentUser();
-  const id = String(formData.get("student_subject_id") ?? "");
-  if (!id) return;
 
-  await supabase.from("student_subjects").delete().eq("id", id);
+  const { error } = await supabase.from("student_subjects").delete().eq("id", id);
+  if (error) return { error: error.message };
+
   revalidatePath("/subjects");
+  return { error: null };
 }
 
-export async function deletePaper(formData: FormData) {
+export async function deletePaper(id: string): Promise<ActionState> {
   const { supabase } = await currentUser();
-  const id = String(formData.get("paper_id") ?? "");
-  if (!id) return;
 
-  await supabase.from("subject_papers").delete().eq("id", id);
+  const { error } = await supabase.from("subject_papers").delete().eq("id", id);
+  if (error) return { error: error.message };
+
   revalidatePath("/subjects");
+  return { error: null };
 }
 
-export async function deleteChapter(formData: FormData) {
+export async function deleteChapter(id: string): Promise<ActionState> {
   const { supabase } = await currentUser();
-  const id = String(formData.get("chapter_id") ?? "");
-  if (!id) return;
 
-  await supabase.from("chapters").delete().eq("id", id);
+  const { error } = await supabase.from("chapters").delete().eq("id", id);
+  if (error) return { error: error.message };
+
   revalidatePath("/subjects");
+  return { error: null };
 }

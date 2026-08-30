@@ -4,6 +4,7 @@ import { BottomTabs } from "@/components/shell/bottom-tabs";
 import { IconRail } from "@/components/shell/icon-rail";
 import { SegmentedNav } from "@/components/shell/segmented-nav";
 import { Sidebar } from "@/components/shell/sidebar";
+import { InstallPrompt } from "@/components/install-prompt";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOutAction } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -76,6 +77,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <main className="flex-1 px-3">{children}</main>
         {profile && role !== "guardian" ? <BottomTabs role={role} /> : null}
       </div>
+
+      {profile && role === "guardian" ? <InstallPrompt /> : null}
     </div>
   );
 }

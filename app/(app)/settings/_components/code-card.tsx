@@ -43,8 +43,15 @@ export function CodeCard({
 
   async function handleCopy() {
     if (!code) return;
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      // Denied permission or an insecure context - the code is still right
+      // there on screen to select by hand, so this fails quietly rather
+      // than with an alarming error for what's ultimately a convenience.
+      setCopied(false);
+    }
   }
 
   return (

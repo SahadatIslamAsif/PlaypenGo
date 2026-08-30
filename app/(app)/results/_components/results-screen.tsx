@@ -25,6 +25,7 @@ export function ResultsScreen({
   studentId,
   editable,
   canDelete,
+  canCorrect = false,
   items,
   unloggedAssessments,
   series,
@@ -36,6 +37,8 @@ export function ResultsScreen({
   studentId: string;
   editable: boolean;
   canDelete: boolean;
+  /** §3.3's tutor UPDATE-only path - never true alongside `editable`. */
+  canCorrect?: boolean;
   items: ResultListItem[];
   /** Everything results itself can't show: an assessment past its date (or
    * confirmed via §7.6's "did this happen?") with no result yet. Read
@@ -101,7 +104,13 @@ export function ResultsScreen({
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((item) => (
-            <ResultCard key={item.resultId} item={item} canDelete={canDelete} canAttach={editable} />
+            <ResultCard
+              key={item.resultId}
+              item={item}
+              canDelete={canDelete}
+              canAttach={editable}
+              canCorrect={canCorrect}
+            />
           ))}
         </div>
       )}

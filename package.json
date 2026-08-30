@@ -13,7 +13,8 @@
     "db:test": "supabase test db",
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
     "db:seed-catalog": "tsx --env-file=.env.local scripts/seed-subjects-catalog.ts",
-    "parse:check-fixtures": "tsx --env-file=.env.local scripts/check-paper-fixtures.ts"
+    "parse:check-fixtures": "tsx --env-file=.env.local scripts/check-paper-fixtures.ts",
+    "icons:generate": "tsx scripts/generate-icons.tsx"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",

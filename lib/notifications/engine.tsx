@@ -53,6 +53,8 @@ import {
   type WeekInReview,
 } from "./digest";
 import { logSkippedEmpty, sendDigest, type SendOutcome } from "@/lib/email/send";
+import { computeTrend } from "@/lib/assessments/trend";
+import { buildWeekInReview, type WeekChapterRow, type WeekResultRow } from "./week-review";
 import {
   GuardianDigestEmail,
   StudentDigestEmail,
@@ -117,7 +119,7 @@ export async function runEveningDigest(supabase: Client, now: Date): Promise<Run
     const digest = await composeFor(supabase, student, timeZone, today, now, advanced);
     digests.set(student.id, digest);
 
-    await sendStudentAndGuardian(supabase, student, digest, today, summary);
+    await sendStudentAndGuardian(supabase, student, digest, today, now, summary);
   }
 
   await sendTutors(supabase, digests, now, summary);
@@ -326,6 +328,14 @@ async function advanceWindows(
     }
 
     for (const targetDate of plan.confirms) {
+      // This only *reserves* the question — `last_sent_at` stays null (the
+      // column's own default) until markConfirmsDelivered stamps it, which
+      // happens later, and only once the digest email that actually carries
+      // this token has been confirmed sent. Writing the row here rather than
+      // after a successful send is what lets a retry find the same row (and
+      // reuse its token below) instead of minting a second question for the
+      // same occurrence; leaving it undelivered is what lets window.ts's
+      // planWindow re-offer it if tonight's send never reaches anyone.
       const { data: alert } = await supabase
         .from("alerts")
         .upsert(
@@ -334,8 +344,6 @@ async function advanceWindows(
             assessment_id: assessment.id,
             kind: "confirm",
             target_date: targetDate,
-            sent_count: 1,
-            last_sent_at: now.toISOString(),
           },
           { onConflict: "assessment_id,target_date,kind" },
         )
@@ -403,6 +411,16 @@ async function advanceWindows(
  * "Re-derive the window's four occurrence dates the same way the window was
  * opened." Deriving from today would slide the window forward one class every
  * evening and it would never exhaust.
+ *
+ * `created_at` is read through `localDate`, not `.slice(0, 10)`. Supabase
+ * returns it as a UTC ISO string, and openWindows opened this same window
+ * against a Dhaka-local `today` (`localDate(now, timeZone)`) — a plain slice
+ * reads the UTC calendar date instead, which is the previous day for six hours
+ * of every Dhaka evening (18:00-24:00 UTC = the six hours after Dhaka
+ * midnight). Under the intended fixed 8pm-Dhaka (14:00 UTC) schedule the two
+ * dates always agree and this was dormant, but a cron that lands hours late
+ * inside that window would otherwise anchor a CWM's four occurrences one day
+ * off from the date openWindows actually used to decide there were any.
  */
 function occurrencesFor(
   assessment: OpenAssessment,
@@ -415,7 +433,7 @@ function occurrencesFor(
   return nextClassDays(
     periods,
     assessment.student_subject_id,
-    assessment.created_at.slice(0, 10),
+    localDate(new Date(assessment.created_at), DEFAULT_TIMEZONE),
     CWM_WINDOW_OCCURRENCES,
   );
 }
@@ -605,77 +623,26 @@ async function loadWeekInReview(
       .eq("student_id", studentId),
   ]);
 
-  const bySubject = new Map<string, number[]>();
-  for (const row of results ?? []) {
-    const a = row.assessments as unknown as { student_subject_id: string };
-    bySubject.set(a.student_subject_id, [
-      ...(bySubject.get(a.student_subject_id) ?? []),
-      Number(row.percentage),
-    ]);
-  }
-
-  const subjectAverages = [...bySubject.entries()]
-    .map(([subjectId, values]) => ({
-      subject: names.get(subjectId) ?? "That subject",
-      percentage: values.reduce((sum, v) => sum + v, 0) / values.length,
-      count: values.length,
-    }))
-    .sort((a, b) => b.percentage - a.percentage);
-
-  const coverageBySubject = new Map<string, { done: number; total: number }>();
-  for (const chapter of chapters ?? []) {
-    const entry = coverageBySubject.get(chapter.student_subject_id) ?? { done: 0, total: 0 };
-    // 'not_taught' is the teacher shrinking the syllabus (§8), not a gap in the
-    // student's coverage — it counts toward neither side of the fraction.
-    if (chapter.status === "not_taught") continue;
-    entry.total += 1;
-    if (chapter.status === "p80" || chapter.status === "p100") entry.done += 1;
-    coverageBySubject.set(chapter.student_subject_id, entry);
-  }
-
-  const coverage = [...coverageBySubject.entries()]
-    .map(([subjectId, c]) => ({ subject: names.get(subjectId) ?? "That subject", ...c }))
-    .filter((c) => c.total > 0)
-    .sort((a, b) => a.subject.localeCompare(b.subject));
-
-  if (subjectAverages.length === 0 && coverage.length === 0) return null;
-
-  // §7.4 section 7's "best and weakest chapters". A chapter's score is the mean
-  // of the results filed against it, because 0017 made the link many-to-many:
-  // one CT can span three chapters and carries ONE combined mark, so that mark
-  // counts toward each of them. Crude — the paper does not say which chapter
-  // lost the marks — but it is the only honest reading of a combined score, and
-  // it is what makes a repeatedly-weak chapter surface across several weeks.
-  const byChapter = new Map<string, number[]>();
-  for (const row of results ?? []) {
+  const resultRows: WeekResultRow[] = (results ?? []).map((row) => {
     const a = row.assessments as unknown as {
+      student_subject_id: string;
       assessment_chapters?: { chapters?: { name: string } | null }[] | null;
     };
-    for (const link of a.assessment_chapters ?? []) {
-      const name = link.chapters?.name;
-      if (!name) continue;
-      byChapter.set(name, [...(byChapter.get(name) ?? []), Number(row.percentage)]);
-    }
-  }
+    return {
+      percentage: Number(row.percentage),
+      studentSubjectId: a.student_subject_id,
+      chapterNames: (a.assessment_chapters ?? [])
+        .map((link) => link.chapters?.name)
+        .filter((name): name is string => Boolean(name)),
+    };
+  });
 
-  const ranked = [...byChapter.entries()]
-    .map(([chapter, values]) => ({
-      chapter,
-      percentage: values.reduce((sum, v) => sum + v, 0) / values.length,
-    }))
-    .sort((a, b) => b.percentage - a.percentage);
+  const chapterRows: WeekChapterRow[] = (chapters ?? []).map((c) => ({
+    studentSubjectId: c.student_subject_id,
+    status: c.status,
+  }));
 
-  // One chapter is not a best and a weakest at once. Reporting the same line
-  // twice under opposite headings reads as a bug, and it is: with a single
-  // chapter there is nothing to compare.
-  const hasSpread = ranked.length > 1;
-
-  return {
-    subjectAverages,
-    bestChapter: hasSpread ? ranked[0] : null,
-    weakestChapter: hasSpread ? ranked[ranked.length - 1] : null,
-    coverage,
-  };
+  return buildWeekInReview(resultRows, chapterRows, names);
 }
 
 function daysBetween(from: string, to: string): number {
@@ -701,11 +668,43 @@ function baseUrl(): string {
  */
 const NOTHING_TO_REPORT = "Nothing to report";
 
+/**
+ * Stamps a confirm question delivered — the only thing that should ever
+ * exclude it from a future digest (window.ts's planWindow). Writing the alert
+ * row and minting its token (advanceWindows, above) only reserves the
+ * question; it does not know yet whether tonight's email will actually reach
+ * the student. This is the other half: called only once `sendDigest` has
+ * returned 'sent' for the student's own digest, so a failed send simply never
+ * calls this and last_sent_at stays null for the next run to find.
+ *
+ * Only the student's send matters here — the guardian template never carries
+ * a confirm section (§3.3: guardians are read-only, and a Yes/No link is a
+ * write), so a guardian-only delivery outcome has no bearing on whether a
+ * confirm question was ever asked.
+ */
+async function markConfirmsDelivered(
+  supabase: Client,
+  confirms: DigestConfirm[],
+  now: Date,
+): Promise<void> {
+  await Promise.all(
+    confirms.map((c) =>
+      supabase
+        .from("alerts")
+        .update({ last_sent_at: now.toISOString(), sent_count: 1 })
+        .eq("assessment_id", c.assessmentId)
+        .eq("kind", "confirm")
+        .eq("target_date", c.targetDate),
+    ),
+  );
+}
+
 async function sendStudentAndGuardian(
   supabase: Client,
   student: StudentRow,
   digest: StudentDigest,
   today: string,
+  now: Date,
   summary: RunSummary,
 ): Promise<void> {
   const empty = isEmptyDigest(digest);
@@ -727,6 +726,10 @@ async function sendStudentAndGuardian(
 
     const outcome = empty ? await logSkippedEmpty(request) : await sendDigest(request);
     summary.emails[outcome] += 1;
+
+    if (outcome === "sent" && digest.confirms.length > 0) {
+      await markConfirmsDelivered(supabase, digest.confirms, now);
+    }
   }
 
   // §1 step 4: an approved link, never a pending one. A guardian the tutor has
@@ -830,17 +833,5 @@ async function trendFor(supabase: Client, studentId: string): Promise<TutorRow["
     .order("logged_at", { ascending: false })
     .limit(20);
 
-  const values = (data ?? []).map((r) => Number(r.percentage));
-  if (values.length < 5) return null;
-
-  const recent = values.slice(0, 3);
-  const rest = values.slice(3);
-
-  const mean = (xs: number[]) => xs.reduce((sum, x) => sum + x, 0) / xs.length;
-  const delta = mean(recent) - mean(rest);
-
-  // Five percentage points either way. Below that a "trend" is a hard paper.
-  if (delta > 5) return "up";
-  if (delta < -5) return "down";
-  return "flat";
+  return computeTrend((data ?? []).map((r) => Number(r.percentage)));
 }

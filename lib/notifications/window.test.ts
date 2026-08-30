@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   answeredSequence,
   closesForTwoNoInARow,
+  closeReasonForExhaustion,
   eveningsUsed,
   isExhausted,
   planWindow,
@@ -142,6 +143,44 @@ describe("isExhausted — §7.3, computed from the routine", () => {
   });
 });
 
+describe("closeReasonForExhaustion — §7.3/§7.5, the paused-project gap", () => {
+  it("is never_reached when no confirm was ever minted", () => {
+    // The whole point: a window whose first contact with the engine is
+    // already past every occurrence has nothing in `alerts` at all.
+    expect(closeReasonForExhaustion([])).toBe("never_reached");
+  });
+
+  it("is never_reached even if advance/night_before alerts exist, with no confirm among them", () => {
+    // An advance or night-before send is not the same claim as a confirm
+    // question actually having been offered - only `confirm` rows count as
+    // "asked" here, since that's the question this whole distinction is about.
+    expect(
+      closeReasonForExhaustion([
+        alert({ kind: "advance", target_date: "2026-08-30", last_sent_at: sentOn("2026-08-28") }),
+        alert({ kind: "night_before", target_date: "2026-08-30", last_sent_at: sentOn("2026-08-29") }),
+      ]),
+    ).toBe("never_reached");
+  });
+
+  it("is window_exhausted once at least one confirm was ever minted", () => {
+    expect(
+      closeReasonForExhaustion([alert({ kind: "confirm", target_date: "2026-08-30" })]),
+    ).toBe("window_exhausted");
+  });
+
+  it("is window_exhausted on partial engagement - some occurrences confirmed, not all", () => {
+    // A shorter mid-window gap, not a total blackout: the engine was running
+    // for at least part of this window's life, which is what
+    // window_exhausted is actually claiming.
+    expect(
+      closeReasonForExhaustion([
+        alert({ kind: "confirm", target_date: "2026-08-30", answer: "no" }),
+        // occurrences 2-4 never got a confirm row at all
+      ]),
+    ).toBe("window_exhausted");
+  });
+});
+
 describe("planWindow — the nightly decision", () => {
   it("sends the advance alert two evenings out", () => {
     const plan = planWindow({ occurrences: CHEM, today: "2026-08-28", alerts: [] });
@@ -213,7 +252,11 @@ describe("planWindow — the nightly decision", () => {
         sent.push(alert({ ...plan.send, target_date: plan.send.targetDate, last_sent_at: sentOn(today) }));
       }
       for (const date of plan.confirms) {
-        sent.push(alert({ kind: "confirm", target_date: date }));
+        // Modelling a normal night where the digest carrying this question
+        // actually sends — delivered immediately, so it is never re-offered.
+        // The retry path (a send that fails) has its own dedicated coverage
+        // below.
+        sent.push(alert({ kind: "confirm", target_date: date, last_sent_at: sentOn(today) }));
       }
     }
 
@@ -239,7 +282,9 @@ describe("planWindow — the nightly decision", () => {
       today: "2026-08-31",
       alerts: [
         alert({ kind: "advance", target_date: "2026-09-01", last_sent_at: sentOn("2026-08-31") }),
-        alert({ kind: "confirm", target_date: "2026-08-30" }),
+        // Already delivered on the 30th — this test is about the 31st's own
+        // occurrence, not about re-asking one that already went out.
+        alert({ kind: "confirm", target_date: "2026-08-30", last_sent_at: sentOn("2026-08-30") }),
       ],
     });
 
@@ -247,17 +292,47 @@ describe("planWindow — the nightly decision", () => {
     expect(plan.confirms).toEqual(["2026-08-31"]);
   });
 
-  it("does not ask the same occurrence twice", () => {
+  it("does not ask the same occurrence twice, once delivered", () => {
     const plan = planWindow({
       occurrences: CHEM,
       today: "2026-08-31",
       alerts: [
-        alert({ kind: "confirm", target_date: "2026-08-30" }),
-        alert({ kind: "confirm", target_date: "2026-08-31" }),
+        alert({ kind: "confirm", target_date: "2026-08-30", last_sent_at: sentOn("2026-08-30") }),
+        alert({ kind: "confirm", target_date: "2026-08-31", last_sent_at: sentOn("2026-08-31") }),
       ],
     });
 
     expect(plan.confirms).toEqual([]);
+  });
+
+  it("re-offers a confirm question whose row exists but was never delivered", () => {
+    // The bug this guards against: a digest send that fails after the confirm
+    // row (and its token) were already written must not orphan the question.
+    // last_sent_at null is exactly what a written-but-undelivered row looks
+    // like — the row has to exist before the send is even attempted, since the
+    // email needs the token to link to.
+    const plan = planWindow({
+      occurrences: CHEM,
+      today: "2026-08-31",
+      alerts: [
+        alert({ kind: "confirm", target_date: "2026-08-30" }), // last_sent_at: null
+      ],
+    });
+
+    // Both the never-delivered 30th and the newly-due 31st come back.
+    expect(plan.confirms).toEqual(["2026-08-30", "2026-08-31"]);
+  });
+
+  it("does not re-offer a confirm question that was answered, even if last_sent_at is stray null", () => {
+    // Defensive: answering at all is only possible once the question actually
+    // reached someone, whatever this row's own delivery bookkeeping says.
+    const plan = planWindow({
+      occurrences: CHEM,
+      today: "2026-08-31",
+      alerts: [alert({ kind: "confirm", target_date: "2026-08-30", answer: "no" })],
+    });
+
+    expect(plan.confirms).toEqual(["2026-08-31"]);
   });
 
   it("stops predicting once an occurrence is confirmed as having happened", () => {
@@ -303,10 +378,28 @@ describe("planWindow — the nightly decision", () => {
     expect(plan).toEqual({ send: null, confirms: [], close: "two_no_in_a_row" });
   });
 
-  it("closes as exhausted once the window's last occurrence has passed", () => {
-    const plan = planWindow({ occurrences: CHEM, today: "2026-09-07", alerts: [] });
+  it("closes as exhausted once the window's last occurrence has passed, having been asked", () => {
+    // At least one confirm was minted along the way - the engine genuinely
+    // watched this window across its life, so the honest reason is
+    // window_exhausted: asked, and got no result.
+    const plan = planWindow({
+      occurrences: CHEM,
+      today: "2026-09-07",
+      alerts: [alert({ kind: "confirm", target_date: "2026-08-30" })],
+    });
 
     expect(plan.close).toBe("window_exhausted");
+  });
+
+  it("closes as never_reached when the window's last occurrence has passed with nothing ever asked", () => {
+    // The paused-project gap: the very first time the engine looks at this
+    // window is already after all four occurrences, with zero confirm rows
+    // ever minted. isExhausted is still true, but "window_exhausted" would
+    // claim the student was asked four times and stayed silent - the honest
+    // story is the app was never running to ask at all.
+    const plan = planWindow({ occurrences: CHEM, today: "2026-09-07", alerts: [] });
+
+    expect(plan.close).toBe("never_reached");
   });
 
   it("prefers two_no_in_a_row over exhaustion when both are true", () => {
@@ -332,7 +425,7 @@ describe("planWindow — the nightly decision", () => {
     expect(planWindow({ occurrences: ct, today: "2026-09-02", alerts: [] }).send)
       .toEqual({ kind: "night_before", targetDate: "2026-09-03" });
     expect(planWindow({ occurrences: ct, today: "2026-09-04", alerts: [] }).close)
-      .toBe("window_exhausted");
+      .toBe("never_reached");
   });
 
   it("never re-sends an alert whose row already went out", () => {

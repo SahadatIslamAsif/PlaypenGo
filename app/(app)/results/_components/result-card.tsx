@@ -1,9 +1,9 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ImageIcon, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageIcon, Pencil, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { deleteResult } from "@/lib/assessments/actions";
+import { correctResult, deleteResult } from "@/lib/assessments/actions";
 import { formatConverted, formatRaw } from "@/lib/assessments/marks";
 import type { ResultListItem } from "@/lib/assessments/list";
 
@@ -11,6 +11,7 @@ export function ResultCard({
   item,
   canDelete,
   canAttach,
+  canCorrect = false,
 }: {
   item: ResultListItem;
   canDelete: boolean;
@@ -18,10 +19,16 @@ export function ResultCard({
    * "Log result"/delete on this screen, reused here rather than a second
    * role check. */
   canAttach: boolean;
+  /** §3.3's sole tutor write - "correcting a wrong mark beside the student,
+   * never to create one" - via 0018's can_correct_result(). Never true at
+   * the same time as canDelete/canAttach; those stay student-only. */
+  canCorrect?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [zoomedIndex, setZoomedIndex] = useState<number | null>(null);
   const zoomedUrl = zoomedIndex !== null ? item.imageUrls[zoomedIndex] : null;
+  const [correcting, setCorrecting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   return (
     <div className="flex items-start justify-between gap-3 rounded-card border border-hairline bg-surface p-4 shadow-soft">
@@ -69,26 +76,49 @@ export function ResultCard({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        <p className="text-sm font-semibold text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
-          {formatRaw(item.rawObtained, item.rawTotal)}
-        </p>
-        <p className="text-xs text-muted">
-          {formatConverted(item.converted, item.type === "CT" ? 25 : 15)} · {item.percentage}%
-        </p>
+      {correcting ? (
+        <CorrectForm item={item} onDone={() => setCorrecting(false)} />
+      ) : (
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <p className="text-sm font-semibold text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
+            {formatRaw(item.rawObtained, item.rawTotal)}
+          </p>
+          <p className="text-xs text-muted">
+            {formatConverted(item.converted, item.type === "CT" ? 25 : 15)} · {item.percentage}%
+          </p>
 
-        {canDelete ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => startTransition(() => { deleteResult(item.resultId); })}
-            aria-label="Delete result"
-            className="mt-1 flex h-8 w-8 items-center justify-center rounded-button text-muted transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
-        ) : null}
-      </div>
+          {canCorrect ? (
+            <button
+              type="button"
+              onClick={() => setCorrecting(true)}
+              aria-label="Correct this mark"
+              className="mt-1 flex h-8 w-8 items-center justify-center rounded-button text-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+          ) : null}
+
+          {canDelete ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await deleteResult(item.resultId);
+                  setDeleteError(result.error);
+                })
+              }
+              aria-label="Delete result"
+              className="mt-1 flex h-8 w-8 items-center justify-center rounded-button text-muted transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+          ) : null}
+          {deleteError ? (
+            <p className="max-w-[7rem] text-right text-[11px] text-danger">{deleteError}</p>
+          ) : null}
+        </div>
+      )}
 
       {zoomedUrl ? (
         <div
@@ -147,6 +177,94 @@ export function ResultCard({
           </button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * The correction, in place - CLAUDE.md's copy rule ("Save result" stays
+ * "Save result" through the flow) extended to this one: raw_obtained and
+ * raw_total only, since converted/percentage are generated columns that
+ * recompute from these (0013/0015) - there is nothing else to correct.
+ */
+function CorrectForm({ item, onDone }: { item: ResultListItem; onDone: () => void }) {
+  const [obtained, setObtained] = useState(String(item.rawObtained));
+  const [total, setTotal] = useState(String(item.rawTotal));
+  const [paperMissing, setPaperMissing] = useState(item.paperMissing);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    const obtainedNum = Number(obtained);
+    const totalNum = Number(total);
+
+    if (!Number.isFinite(obtainedNum) || !Number.isFinite(totalNum) || totalNum <= 0) {
+      setError("Enter valid marks.");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await correctResult(item.resultId, obtainedNum, totalNum, paperMissing);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      onDone();
+    });
+  }
+
+  return (
+    <div className="flex w-32 shrink-0 flex-col items-end gap-1.5">
+      <div className="flex w-full items-center gap-1">
+        <input
+          type="number"
+          inputMode="numeric"
+          value={obtained}
+          onChange={(e) => setObtained(e.target.value)}
+          aria-label="Marks obtained"
+          className="h-9 w-full min-w-0 rounded-button border border-hairline bg-surface px-2 text-right text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        />
+        <span className="text-xs text-muted">/</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          value={total}
+          onChange={(e) => setTotal(e.target.value)}
+          aria-label="Marks total"
+          className="h-9 w-full min-w-0 rounded-button border border-hairline bg-surface px-2 text-right text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        />
+      </div>
+
+      <label className="flex items-center gap-1.5 text-xs text-muted">
+        <input
+          type="checkbox"
+          checked={paperMissing}
+          onChange={(e) => setPaperMissing(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-hairline"
+        />
+        Paper missing
+      </label>
+
+      {error ? <p className="text-xs text-danger">{error}</p> : null}
+
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={onDone}
+          disabled={pending}
+          className="h-8 rounded-button border border-hairline bg-surface px-2.5 text-xs font-medium text-ink transition-colors hover:bg-surface-sunk"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={pending}
+          className="h-8 rounded-button bg-ink px-2.5 text-xs font-medium text-shell transition-colors hover:bg-ink/90 disabled:opacity-60"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
 }

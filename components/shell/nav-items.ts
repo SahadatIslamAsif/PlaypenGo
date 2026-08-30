@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   ScanLine,
   Settings,
+  Users,
 } from "lucide-react";
 
 export type Role = "student" | "guardian" | "tutor";
@@ -32,6 +33,11 @@ const SUBJECTS: NavItem = { href: "/subjects", label: "Subjects", icon: BookOpen
 const RESULTS: NavItem = { href: "/results", label: "Results", icon: LineChart };
 const ROUTINE: NavItem = { href: "/routine", label: "Routine", icon: CalendarClock };
 const SETTINGS: NavItem = { href: "/settings", label: "Settings", icon: Settings };
+// Phase 7's roster - CLAUDE.md's tutor bar is literally "Students · Results
+// · More", and this is that first item. Distinct from HOME: a tutor has no
+// personal dashboard, so their first destination is the student list, not a
+// stand-in for one.
+const STUDENTS: NavItem = { href: "/tutor", label: "Students", icon: Users };
 
 // A normal list entry in SIDEBAR_NAV (≥640, every role reachable there gets
 // every destination) - but never in BOTTOM_TABS below, where it's instead
@@ -48,13 +54,13 @@ export const SCAN: NavItem = { href: "/scan", label: "Scan", icon: ScanLine };
 // the ordinary, expected control).
 export const SIDEBAR_NAV: Record<Role, NavItem[]> = {
   student: [HOME, SUBJECTS, SCAN, RESULTS, ROUTINE, SETTINGS],
-  // CLAUDE.md's target for the tutor is "Students · Results · More", but the
-  // roster is Phase 7 and nothing may point at a page that does not exist.
-  // Until it does, Home stands in for it: the routes below already accept a
-  // `?student=` param and default to the first linked student. Routine is
-  // read-only for a tutor since 0019, but reading it is most of why they open
-  // it — knowing what the student has tomorrow.
-  tutor: [HOME, RESULTS, ROUTINE, SETTINGS],
+  // CLAUDE.md's target: "Students · Results · More". /tutor (Phase 7) is now
+  // that first destination - the roster, sorted by unlogged count, with a
+  // per-student drill-down. Results/Routine still take the same `?student=`
+  // param the roster's drill-down links through; Routine is read-only for a
+  // tutor since 0019, but reading it is most of why they open it — knowing
+  // what the student has tomorrow.
+  tutor: [STUDENTS, RESULTS, ROUTINE, SETTINGS],
   guardian: [HOME, SUBJECTS, RESULTS, ROUTINE, SETTINGS],
 };
 
@@ -73,7 +79,7 @@ export const SIDEBAR_NAV: Record<Role, NavItem[]> = {
 // "More" stays a direct link to Settings, same as before.
 export const BOTTOM_TABS: Record<"student" | "tutor", NavItem[]> = {
   student: [HOME, SUBJECTS, RESULTS],
-  tutor: [HOME, RESULTS, ROUTINE],
+  tutor: [STUDENTS, RESULTS, ROUTINE],
 };
 
 // The bottom bar's last slot. Its href only matters for the tutor, who

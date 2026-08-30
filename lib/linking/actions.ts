@@ -43,20 +43,32 @@ export async function redeemLinkCode(
   return { error: null };
 }
 
-export async function approveGuardianLink(formData: FormData) {
-  const linkId = String(formData.get("link_id") ?? "");
-  if (!linkId) return;
+export type LinkActionState = { error: string | null };
 
+export async function approveGuardianLink(linkId: string): Promise<LinkActionState> {
   const supabase = await createClient();
-  await supabase.from("guardian_links").update({ status: "approved" }).eq("id", linkId);
+  const { error } = await supabase
+    .from("guardian_links")
+    .update({ status: "approved" })
+    .eq("id", linkId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
   revalidatePath("/");
+  return { error: null };
 }
 
-export async function revokeGuardianLink(formData: FormData) {
-  const linkId = String(formData.get("link_id") ?? "");
-  if (!linkId) return;
-
+export async function revokeGuardianLink(linkId: string): Promise<LinkActionState> {
   const supabase = await createClient();
-  await supabase.from("guardian_links").update({ status: "revoked" }).eq("id", linkId);
+  const { error } = await supabase
+    .from("guardian_links")
+    .update({ status: "revoked" })
+    .eq("id", linkId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
   revalidatePath("/");
+  return { error: null };
 }

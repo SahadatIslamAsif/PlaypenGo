@@ -103,6 +103,39 @@ export async function deleteResult(resultId: string): Promise<ActionState> {
   return { error: null };
 }
 
+export type CorrectResultState = { error: string | null };
+
+/**
+ * §3.3's sole tutor write, authorized by 0018's can_correct_result(): the
+ * student, or their approved tutor, may UPDATE a result - never INSERT one.
+ * Only raw_obtained/raw_total/paper_missing are writable here; `converted`
+ * and `percentage` are generated columns (0013, made NOT NULL by 0015) and
+ * recompute from the raw fields automatically. No assessment or chapter
+ * link is touched - correcting a wrong mark beside the student is a
+ * different act from creating one (0018's own framing for the policy this
+ * calls through).
+ */
+export async function correctResult(
+  resultId: string,
+  rawObtained: number,
+  rawTotal: number,
+  paperMissing: boolean,
+): Promise<CorrectResultState> {
+  const { supabase } = await currentUser();
+
+  const { error } = await supabase
+    .from("results")
+    .update({ raw_obtained: rawObtained, raw_total: rawTotal, paper_missing: paperMissing })
+    .eq("id", resultId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/results");
+  revalidatePath("/tutor");
+  revalidatePath("/");
+  return { error: null };
+}
+
 export type SaveResultState = {
   error: string | null;
   percentage?: number;

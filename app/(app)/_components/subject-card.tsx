@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { deleteSubject, deletePaper } from "@/lib/subjects/actions";
 import type { SubjectNode } from "@/lib/subjects/tree";
 import { AddChapterInline } from "./add-chapter-inline";
@@ -71,18 +71,7 @@ export function SubjectCard({
             <div key={paper.id} className="mt-3 rounded-tint bg-surface-sunk p-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-ink">{paper.name}</p>
-                {editable ? (
-                  <form action={deletePaper}>
-                    <input type="hidden" name="paper_id" value={paper.id} />
-                    <button
-                      type="submit"
-                      aria-label={`Delete ${paper.name}`}
-                      className="flex h-7 w-7 items-center justify-center rounded-button text-muted hover:text-danger"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    </button>
-                  </form>
-                ) : null}
+                {editable ? <DeletePaperButton paperId={paper.id} paperName={paper.name} /> : null}
               </div>
               <div className="divide-y divide-hairline">
                 {paper.chapters.map((chapter) => (
@@ -106,19 +95,60 @@ export function SubjectCard({
           {editable ? (
             <div className="mt-2 flex items-center justify-between border-t border-hairline pt-2">
               <AddPaperInline studentSubjectId={subject.id} />
-              <form action={deleteSubject}>
-                <input type="hidden" name="student_subject_id" value={subject.id} />
-                <button
-                  type="submit"
-                  className="py-2 text-xs font-medium text-muted hover:text-danger"
-                >
-                  Delete subject
-                </button>
-              </form>
+              <DeleteSubjectButton subjectId={subject.id} />
             </div>
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function DeletePaperButton({ paperId, paperName }: { paperId: string; paperName: string }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        disabled={pending}
+        aria-label={`Delete ${paperName}`}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await deletePaper(paperId);
+            setError(result.error);
+          })
+        }
+        className="flex h-7 w-7 items-center justify-center rounded-button text-muted transition-colors hover:text-danger disabled:opacity-60"
+      >
+        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+      </button>
+      {error ? <p className="text-xs text-danger">{error}</p> : null}
+    </div>
+  );
+}
+
+function DeleteSubjectButton({ subjectId }: { subjectId: string }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await deleteSubject(subjectId);
+            setError(result.error);
+          })
+        }
+        className="py-2 text-xs font-medium text-muted transition-colors hover:text-danger disabled:opacity-60"
+      >
+        Delete subject
+      </button>
+      {error ? <p className="text-xs text-danger">{error}</p> : null}
     </div>
   );
 }

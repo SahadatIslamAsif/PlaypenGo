@@ -1,9 +1,8 @@
-import { Check, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
-import { approveGuardianLink, revokeGuardianLink } from "@/lib/linking/actions";
 import { createClient } from "@/lib/supabase/server";
 import { CodeCard } from "./code-card";
+import { GuardianApprovalRow } from "./guardian-approval-row";
 
 export async function TutorSettings({ userId }: { userId: string }) {
   const supabase = await createClient();
@@ -49,41 +48,12 @@ export async function TutorSettings({ userId }: { userId: string }) {
             <p className="text-xs text-muted">No guardians waiting for approval.</p>
           ) : (
             pendingLinks.map((link) => (
-              <div
+              <GuardianApprovalRow
                 key={link.id}
-                className="flex items-center justify-between rounded-tint bg-tint-sage px-3 py-2"
-              >
-                <div>
-                  <p className="text-sm text-tint-ink">
-                    {link.guardian?.full_name ?? "A guardian"}
-                  </p>
-                  <p className="text-xs text-tint-ink/60">
-                    wants to follow {link.student?.full_name ?? "a student"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <form action={approveGuardianLink}>
-                    <input type="hidden" name="link_id" value={link.id} />
-                    <button
-                      type="submit"
-                      aria-label="Approve"
-                      className="flex h-9 w-9 items-center justify-center rounded-button bg-ink text-shell transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      <Check className="h-4 w-4" strokeWidth={2} />
-                    </button>
-                  </form>
-                  <form action={revokeGuardianLink}>
-                    <input type="hidden" name="link_id" value={link.id} />
-                    <button
-                      type="submit"
-                      aria-label="Deny"
-                      className="flex h-9 w-9 items-center justify-center rounded-button bg-white text-tint-ink transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      <X className="h-4 w-4" strokeWidth={2} />
-                    </button>
-                  </form>
-                </div>
-              </div>
+                linkId={link.id}
+                guardianName={link.guardian?.full_name ?? "A guardian"}
+                studentName={link.student?.full_name ?? "a student"}
+              />
             ))
           )}
         </div>

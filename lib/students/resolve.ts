@@ -27,9 +27,10 @@ export async function resolveViewedStudentId(
     return data?.student_id ?? null;
   }
 
-  // Tutor: the roster to pick a student from is Phase 7. Until then, a
-  // `?student=` param selects among linked students and the first linked
-  // student is the default — there is only one in practice.
+  // Tutor: /tutor (Phase 7) is the real roster to pick a student from and
+  // links here with `?student=` already set. This fallback - default to the
+  // first linked student - stays so a tutor landing on /results or /routine
+  // directly still sees something rather than "nothing linked".
   const { data } = await supabase
     .from("tutor_links")
     .select("student_id")

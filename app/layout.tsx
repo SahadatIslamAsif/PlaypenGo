@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -18,6 +18,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "PlaypenGo",
   description: "A running record of assessments for a Playpen School student, their guardian, and their tutor.",
+  appleWebApp: { title: "PlaypenGo" },
+};
+
+// --wash-from (app/globals.css) - matches app/manifest.ts's theme_color, so
+// the browser chrome and the standalone launch splash agree with the page.
+export const viewport: Viewport = {
+  themeColor: "#edf8f1",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
