@@ -237,7 +237,7 @@ playpengo/
 │
 ├── fixtures/papers/              # hand-written goldens; images gitignored
 ├── docs/ARCHITECTURE.md          # full architecture reference
-└── CLAUDE.md                     # working rules for the codebase
+└── README.md                     # working rules for the codebase
 ```
 
 ---
