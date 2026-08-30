@@ -1,4 +1,4 @@
--- 0019 — the routine is the student's too (SPEC.md §3.3)
+-- 0019 — the routine is the student's too (ARCHITECTURE.md §3.3)
 --
 -- 0018 closed the tutor's table-level writes. This closes the two that were
 -- never table-level: `commit_routine_grid()` and `update_routine_period()`

@@ -1,4 +1,4 @@
--- 0014 — log_manual_result(): atomic assessment + result (SPEC.md §5.3, §6)
+-- 0014 — log_manual_result(): atomic assessment + result (ARCHITECTURE.md §5.3, §6)
 --
 -- Unlike Phase 3's commit_routine_grid() and Phase 2's commit_syllabus_tree(),
 -- this is SECURITY INVOKER. Those needed a definer because the tutor had no

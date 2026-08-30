@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 // persisted. That keeps this screen inside CLAUDE.md's tutor write surface
 // (0018's results_update, the sole tutor write) rather than opening a new
 // one for a number that only ever matters for the length of one meeting; see
-// docs/SPEC.md's open items for the assumption this rests on.
+// docs/ARCHITECTURE.md §10, item 9 for the assumption this rests on.
 export default async function ReconciliationPage({
   params,
 }: {

@@ -679,7 +679,7 @@ function highlightClass(highlighted: boolean): string {
 }
 
 /** "Low-confidence fields keep their highlight and scroll into view when
- * focused" (SPEC.md's Scan section) - the whole rule in one handler. */
+ * focused" (ARCHITECTURE.md's Scan section) - the whole rule in one handler. */
 function scrollIntoViewOnFocus(e: FocusEvent<HTMLElement>) {
   e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" });
 }

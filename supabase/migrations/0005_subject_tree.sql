@@ -1,4 +1,4 @@
--- 0005 — subject catalogue and the per-student tree (SPEC.md §3.1, §3.2, §4)
+-- 0005 — subject catalogue and the per-student tree (ARCHITECTURE.md §3.1, §3.2, §4)
 --
 -- DEVIATION from §3.2: `student_id` is carried on every child table here, not
 -- just the roots. A policy on `chapters` would otherwise join up two levels to

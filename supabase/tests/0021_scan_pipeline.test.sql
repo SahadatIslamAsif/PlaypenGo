@@ -1,4 +1,4 @@
--- 0021 — the scan pipeline (SPEC.md §3.2, §3.3, §5.3; 0021 migration)
+-- 0021 — the scan pipeline (ARCHITECTURE.md §3.2, §3.3, §5.3; 0021 migration)
 --
 -- Four things this file has to prove that no earlier suite does.
 --

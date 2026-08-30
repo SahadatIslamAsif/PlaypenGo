@@ -1,4 +1,4 @@
--- 0014 — assessments and results (SPEC.md §3.3, §6; 0013 migration)
+-- 0014 — assessments and results (ARCHITECTURE.md §3.3, §6; 0013 migration)
 --
 -- Two things this file has to prove that no earlier suite does.
 --

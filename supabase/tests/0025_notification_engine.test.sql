@@ -1,4 +1,4 @@
--- 0025 — the notification engine's tables (SPEC.md §3.2, §3.3, §7; 0025 migration)
+-- 0025 — the notification engine's tables (ARCHITECTURE.md §3.2, §3.3, §7; 0025 migration)
 --
 -- These three tables are unusual in this schema: they are the first that no
 -- signed-in role may write at all. Everything else a student owns, they own on

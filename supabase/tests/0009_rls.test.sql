@@ -1,4 +1,4 @@
--- 0009 — RLS policy assertions (SPEC.md §3.3)
+-- 0009 — RLS policy assertions (ARCHITECTURE.md §3.3)
 --
 -- §3.3 says "write policy tests as SQL assertions: a guardian must not be able
 -- to read another family's rows, and an unlinked student must not read anything
@@ -575,7 +575,7 @@ select is(
 
 
 -- ===========================================================================
--- 6. Guardian A — read-only, on one student (SPEC.md §1, §3.3)
+-- 6. Guardian A — read-only, on one student (ARCHITECTURE.md §1, §3.3)
 -- ===========================================================================
 
 select tests.login_as(tests.uid('guardian_a'));
@@ -687,7 +687,7 @@ select is(
 
 
 -- ===========================================================================
--- 7. Guardian C — pending, and therefore blind (SPEC.md §1 step 4)
+-- 7. Guardian C — pending, and therefore blind (ARCHITECTURE.md §1 step 4)
 -- ===========================================================================
 
 select tests.login_as(tests.uid('guardian_c'));

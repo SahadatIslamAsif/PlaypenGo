@@ -1,4 +1,4 @@
--- 0012 — commit_routine_grid() and update_routine_period() (SPEC.md §3.3, §5.1;
+-- 0012 — commit_routine_grid() and update_routine_period() (ARCHITECTURE.md §3.3, §5.1;
 -- 0011 migration)
 --
 -- 0011's suite proves routines/routine_periods stay student-only at the table

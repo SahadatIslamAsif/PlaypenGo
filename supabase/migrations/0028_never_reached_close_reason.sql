@@ -1,4 +1,4 @@
--- 0028 — a fifth close reason: never_reached (SPEC.md §7.3, §7.5)
+-- 0028 — a fifth close reason: never_reached (ARCHITECTURE.md §7.3, §7.5)
 --
 -- `window_exhausted` (0020) was written to mean "we asked about all four
 -- occurrences and got no result" — the four-occurrence cap doing the job the

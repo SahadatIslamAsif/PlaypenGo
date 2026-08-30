@@ -1,4 +1,4 @@
--- 0007 — policies: profiles, codes, links (SPEC.md §1, §3.3)
+-- 0007 — policies: profiles, codes, links (ARCHITECTURE.md §1, §3.3)
 --
 -- Predicates route through the 0003 helpers, which are SECURITY DEFINER and so
 -- do not re-enter the policy they are evaluated inside. `(select auth.uid())`

@@ -1,4 +1,4 @@
--- 0023 — attach_scan_job_to_result() (SPEC.md §5.3, 0023 migration)
+-- 0023 — attach_scan_job_to_result() (ARCHITECTURE.md §5.3, 0023 migration)
 --
 -- Three things this file has to prove that 0021/0022's suites don't:
 --

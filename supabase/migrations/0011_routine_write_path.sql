@@ -1,5 +1,5 @@
 -- 0011 — commit_routine_grid() and update_routine_period(): the tutor's write
--- path onto the routine (SPEC.md §3.3, §5.1, §8)
+-- path onto the routine (ARCHITECTURE.md §3.3, §5.1, §8)
 --
 -- Same shape, and the same reasoning, as 0009. 0010 left writes on
 -- routines/routine_periods student-only at the table level, because §3.3 grants

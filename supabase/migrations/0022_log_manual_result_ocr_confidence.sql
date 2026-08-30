@@ -1,4 +1,4 @@
--- 0022 — log_manual_result gains ocr_confidence (SPEC.md §3.2, §5.3)
+-- 0022 — log_manual_result gains ocr_confidence (ARCHITECTURE.md §3.2, §5.3)
 --
 -- 0021 widened this function for entry_mode / name_mismatch /
 -- parsed_student_name but missed the fourth field §3.2's own results table

@@ -23,8 +23,8 @@ import { createClient } from "@/lib/supabase/server";
 // same number of interactions as opening the app.
 //
 // The cost is that a link-prefetching mail client could spend the token before a
-// person ever sees it. It is a real risk and it is tracked as SPEC.md §10 item
-// 11 rather than silently designed around, because every fix for it costs the
+// person ever sees it. It is a real risk and it is tracked as
+// docs/ARCHITECTURE.md §10 item 8 rather than silently designed around, because every fix for it costs the
 // second tap. A token with no `a` at all renders the question with both buttons,
 // which is also what a client that strips query strings will produce.
 //

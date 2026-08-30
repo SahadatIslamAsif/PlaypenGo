@@ -1,6 +1,6 @@
 # Paper parse fixtures
 
-Real photographed Playpen assessment papers, used to check `lib/scans/parse`
+Real photographed assessment papers, used to check `lib/scans/parse`
 (§5.3) against actual handwriting, actual ellipses, actual messy headers —
 not synthetic data standing in for them.
 
@@ -96,7 +96,7 @@ mode is already understood rather than being new signal:**
   the name differently each time fails here even on the right paper.
   Loosening `namesMatch` itself would weaken the real §5.3 name-mismatch
   warning this same function drives for guardians and tutors reviewing a
-  scan, so that's not done — see `docs/SPEC.md` §10, item 8.
+  scan, so that's not done — see `docs/ARCHITECTURE.md` §10, item 7.
 - **`header.obtained_field_struck_through`** currently fails on the Env.
   Management fixture because the model reads the struck `Obtained marks`
   digit as an empty blank rather than as struck. A prompt-iteration item
@@ -108,12 +108,13 @@ one.**
 
 ## Why the images aren't in git
 
-These are photos of a real minor's exam papers — full name, class, section,
-marks, handwriting. Every other place this data lives in the app sits behind
-RLS and signed URLs (`CLAUDE.md`'s hard rules); a git history, even a
-private one, isn't that boundary. The image files (`.jpg`/`.jpeg`/`.png`/
-`.webp`) under this directory are gitignored and stay local-only. Only the
-hand-written `.expected.json` goldens and this README are tracked.
+These are real photographs, not synthetic test data, and the app's normal
+protections for that kind of image — RLS, signed URLs (`CLAUDE.md`'s hard
+rules) — don't reach a git history, even a private one. So the image files
+(`.jpg`/`.jpeg`/`.png`/`.webp`) under this directory are gitignored and stay
+local-only. Only the hand-written `.expected.json` goldens and this README
+are tracked.
 
-If you're setting this up fresh, you need your own copies of the images
-locally — ask whoever has them.
+If you're setting this up fresh, these specific images aren't included —
+capture your own papers in the same shape (one slug, one `.expected.json`)
+to run the check against.

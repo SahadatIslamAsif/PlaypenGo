@@ -1,4 +1,4 @@
--- 0015 — percentage and converted are NOT NULL (0013 migration; SPEC.md §6)
+-- 0015 — percentage and converted are NOT NULL (0013 migration; ARCHITECTURE.md §6)
 --
 -- 0013 declared these as `generated always as (...) stored` without an
 -- explicit NOT NULL. They can never actually be null in practice —

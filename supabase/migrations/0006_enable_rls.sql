@@ -1,4 +1,4 @@
--- 0006 — enable RLS, fail closed (SPEC.md §3.3)
+-- 0006 — enable RLS, fail closed (ARCHITECTURE.md §3.3)
 --
 -- This migration grants nothing. It turns RLS on for all eleven tables that
 -- exist as of 0005 and strips `anon` of every table privilege. With RLS on and

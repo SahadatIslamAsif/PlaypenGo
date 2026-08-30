@@ -1,5 +1,5 @@
 -- 0012 — close the guardian write gap on the student's own tables
--- (CLAUDE.md "Guardians are read-only"; SPEC.md §1, §3.3)
+-- (CLAUDE.md "Guardians are read-only"; ARCHITECTURE.md §1, §3.3)
 --
 -- 0008 and 0010 wrote every write predicate on the student-owned tables as
 -- `student_id = (select auth.uid())`. That denies the threat those suites were

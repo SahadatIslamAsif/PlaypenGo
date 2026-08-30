@@ -1,4 +1,4 @@
--- 0004 — link code RPCs (SPEC.md §1 steps 2-5)
+-- 0004 — link code RPCs (ARCHITECTURE.md §1 steps 2-5)
 --
 -- link_codes has no INSERT policy and no SELECT policy for anyone but the owner.
 -- Codes are issued and redeemed only through these two definer functions, so a

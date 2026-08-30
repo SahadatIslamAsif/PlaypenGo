@@ -1,4 +1,4 @@
--- 0011 — routines and routine_periods at the table level (SPEC.md §3.2, §3.3;
+-- 0011 — routines and routine_periods at the table level (ARCHITECTURE.md §3.2, §3.3;
 -- 0010 migration)
 --
 -- 0009's blanket "every table in public has RLS on" assertion already fires if

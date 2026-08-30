@@ -1,4 +1,4 @@
--- 0017 — assessment_chapters: one assessment, many chapters (SPEC.md §3.2, §5.3, §8)
+-- 0017 — assessment_chapters: one assessment, many chapters (ARCHITECTURE.md §3.2, §5.3, §8)
 --
 -- Real-world correction from the tutor: a CT routinely spans 2-3 chapters in
 -- one paper with ONE combined mark, never separate marks per chapter.

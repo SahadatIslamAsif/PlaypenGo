@@ -1,4 +1,4 @@
--- 0022 — log_manual_result() gains ocr_confidence (SPEC.md §3.2, §5.3)
+-- 0022 — log_manual_result() gains ocr_confidence (ARCHITECTURE.md §3.2, §5.3)
 --
 -- Two things: the new key round-trips into results.ocr_confidence when a
 -- caller provides it, and every existing caller shape (no ocr_confidence

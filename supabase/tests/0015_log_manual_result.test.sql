@@ -1,4 +1,4 @@
--- 0015 — log_manual_result() (SPEC.md §5.3, §6; 0014 migration)
+-- 0015 — log_manual_result() (ARCHITECTURE.md §5.3, §6; 0014 migration)
 --
 -- Unlike 0009's and 0011's suites, this is not proving an authorization check
 -- the function does itself — 0014's header explains why: log_manual_result()

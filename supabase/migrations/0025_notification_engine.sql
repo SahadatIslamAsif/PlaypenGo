@@ -1,4 +1,4 @@
--- 0025 — the notification engine's three tables (SPEC.md §3.2, §3.3, §7; Phase 6)
+-- 0025 — the notification engine's three tables (ARCHITECTURE.md §3.2, §3.3, §7; Phase 6)
 --
 -- §3.2 has described `alerts`, `confirm_tokens` and `email_log` since v1.0 of
 -- the spec and the database has never had any of them. 0020 already closed the

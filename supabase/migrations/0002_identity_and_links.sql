@@ -1,4 +1,4 @@
--- 0002 — identity, link codes, links (SPEC.md §1, §3.2)
+-- 0002 — identity, link codes, links (ARCHITECTURE.md §1, §3.2)
 --
 -- DEVIATIONS from §3.2, deliberate:
 --   * `family_codes` is generalised to `link_codes`. §1 step 5 requires the tutor

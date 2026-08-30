@@ -19,7 +19,7 @@
 // count toward the fail total and the exit code; the separate heading is
 // only so a run's OUTPUT makes it obvious at a glance which failures are
 // new (worth investigating) versus already-understood and tracked
-// elsewhere (docs/SPEC.md §10, item 8).
+// elsewhere (docs/ARCHITECTURE.md §10, item 7).
 
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -80,7 +80,7 @@ function skipped(path: string, reason: string): FieldResult {
 //     here even though it found the right student. Loosening namesMatch
 //     itself would weaken the real §5.3 warning this same function drives
 //     for guardians/tutors reviewing a scan - not done. Tracked as
-//     docs/SPEC.md §10 item 8.
+//     docs/ARCHITECTURE.md §10 item 7.
 //   * header.obtained_field_struck_through - the model currently reads a
 //     struck-through "Obtained marks" digit as an empty blank rather than
 //     as struck, on every run against the Env. Management fixture so far.
@@ -262,7 +262,7 @@ async function main() {
     // Known-limitation fields still count toward pass/fail/exit code - the
     // split below is purely which heading a fail prints under, so a run's
     // NEW failures (worth investigating) aren't buried under ones already
-    // tracked in KNOWN_LIMITATIONS / docs/SPEC.md §10 item 8.
+    // tracked in KNOWN_LIMITATIONS / docs/ARCHITECTURE.md §10 item 7.
     const newFail = fail.filter((f) => f.category !== "known_limitation");
     const knownFail = fail.filter((f) => f.category === "known_limitation");
     totalPass += pass;

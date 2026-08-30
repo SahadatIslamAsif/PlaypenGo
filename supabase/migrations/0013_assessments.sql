@@ -1,4 +1,4 @@
--- 0013 — assessments and results (SPEC.md §3.2, §3.3, §6)
+-- 0013 — assessments and results (ARCHITECTURE.md §3.2, §3.3, §6)
 --
 -- The phase the app exists for. §6: "The teacher always writes the raw mark on
 -- the paper. Conversion happens only in the school portal at semester end. The

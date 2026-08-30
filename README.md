@@ -171,6 +171,11 @@ playpengo/
 │   │   ├── settings/
 │   │   ├── error.tsx             # on-brand error boundary
 │   │   └── loading.tsx
+│   ├── login/                    # unauthenticated — no role choice
+│   ├── signup/                   # student, guardian, tutor — one form each
+│   │   ├── student/
+│   │   ├── guardian/
+│   │   └── tutor/
 │   ├── api/
 │   │   ├── scan-jobs/[id]/parse/ # the Gemini call, maxDuration 60
 │   │   └── cron/                 # nightly digest, bearer-protected
@@ -181,6 +186,7 @@ playpengo/
 │
 ├── components/
 │   ├── shell/                    # sidebar, bottom tabs, nav items
+│   ├── charts/                   # line chart, progress ring, sparkline
 │   └── ui/                       # card, button, field, input, select, sheet, skeleton
 │
 ├── lib/
@@ -205,20 +211,29 @@ playpengo/
 │   │   ├── send.ts               # Nodemailer transport
 │   │   └── templates.tsx         # student, guardian, tutor digests
 │   ├── routines/                 # subject resolution, schedule helpers
+│   ├── subjects/                 # subject tree writes
+│   ├── tutor/roster.ts           # roster sort, unlogged-count-first
 │   ├── assessments/marks.ts      # the conversion above
 │   ├── images/compress.ts        # client-side compression
 │   ├── linking/actions.ts        # guardian and tutor link approval
+│   ├── auth/actions.ts           # login
 │   └── supabase/                 # server and browser clients, generated types
 │
 ├── supabase/
 │   ├── migrations/               # every schema change, in order
 │   ├── tests/                    # pgTAP — policies, triggers, functions
-│   └── seed.sql                  # local fixtures only, never production
+│   ├── seed.sql                  # local fixtures only, never production
+│   └── config.toml
+│
+├── seed/
+│   └── subjects.json             # the Cambridge catalogue seed (§4.1)
 │
 ├── scripts/
 │   ├── parse-paper.ts            # run the parser against local images
 │   ├── check-paper-fixtures.ts   # per-field accuracy against goldens
-│   └── seed-subjects-catalog.ts
+│   ├── seed-subjects-catalog.ts
+│   ├── seed-tutor-allowlist.ts   # allowlist one deployment's tutor email
+│   └── generate-icons.tsx
 │
 ├── fixtures/papers/              # hand-written goldens; images gitignored
 ├── docs/ARCHITECTURE.md          # full architecture reference

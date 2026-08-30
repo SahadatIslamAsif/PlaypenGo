@@ -1,4 +1,4 @@
-// Composing the 8pm digest (SPEC.md §7.1, §7.4).
+// Composing the 8pm digest (ARCHITECTURE.md §7.1, §7.4).
 //
 // §7.1 is the constraint everything here answers to: "One email, per person,
 // per day, maximum. Everything is folded into a single 8:00 PM (Asia/Dhaka)

@@ -1,5 +1,5 @@
 -- 0027 — attaching a result carries its occurred_date through (CLAUDE.md's
--- hard rule; SPEC.md §6: "occurred_date comes from the paper's header, never
+-- hard rule; ARCHITECTURE.md §6: "occurred_date comes from the paper's header, never
 -- from logged_at")
 --
 -- log_manual_result()'s attach branch (`v_assessment_id is not null` — a CT

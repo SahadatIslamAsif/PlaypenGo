@@ -1,4 +1,4 @@
--- 0020 — the alert window lands on `assessments` (SPEC.md §3.2, §7.3, §7.5)
+-- 0020 — the alert window lands on `assessments` (ARCHITECTURE.md §3.2, §7.3, §7.5)
 --
 -- §3.2 already describes this schema; the database has never had it. That gap
 -- is the reason to close it now rather than in Phase 6: a spec that describes

@@ -3,7 +3,7 @@
 import { paperNumbers, type CapturedPage } from "./pages";
 
 // Presentational only - holds no state of its own. "Same paper / new
-// paper" is authored per page, never derived from a neighbour (SPEC.md
+// paper" is authored per page, never derived from a neighbour (ARCHITECTURE.md
 // §5.3: "The thumbnail strip in the review screen carries a same paper /
 // new paper toggle. It is the grouping control, not decoration."), so
 // paper numbers here are a pure scan of that per-page boolean, not

@@ -1,4 +1,4 @@
-// The nightly run (SPEC.md §7).
+// The nightly run (ARCHITECTURE.md §7).
 //
 // The cron route is deliberately thin: it checks the bearer token and calls
 // this. Everything that decides *what* happens tonight lives here, and

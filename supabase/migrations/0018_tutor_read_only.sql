@@ -1,4 +1,4 @@
--- 0018 — the tutor stops writing (SPEC.md §1, §3.3)
+-- 0018 — the tutor stops writing (ARCHITECTURE.md §1, §3.3)
 --
 -- 0013's header called `can_log_for()` "THE ONLY PLACE A TUTOR WRITES THROUGH
 -- AN ORDINARY POLICY", and that was right for the spec it was written against.

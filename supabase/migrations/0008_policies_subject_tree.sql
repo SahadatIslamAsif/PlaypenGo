@@ -1,4 +1,4 @@
--- 0008 — policies: catalogue and the subject tree (SPEC.md §3.1, §3.3)
+-- 0008 — policies: catalogue and the subject tree (ARCHITECTURE.md §3.1, §3.3)
 --
 -- This is the migration the 0003 header points at. Every predicate below is one
 -- of its helpers.

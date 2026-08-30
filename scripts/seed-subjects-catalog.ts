@@ -1,4 +1,4 @@
-// Loads seed/subjects.json into public.subjects_catalog (SPEC.md §4.1).
+// Loads seed/subjects.json into public.subjects_catalog (ARCHITECTURE.md §4.1).
 //
 // Not part of `supabase db reset` — the catalogue changes once a year at most
 // and is edited as JSON, not as SQL migration literals. Run by hand (locally

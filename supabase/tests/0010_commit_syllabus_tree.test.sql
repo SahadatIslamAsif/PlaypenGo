@@ -1,4 +1,4 @@
--- 0010 — commit_syllabus_tree() (SPEC.md §3.1, §4.2; 0009 migration)
+-- 0010 — commit_syllabus_tree() (ARCHITECTURE.md §3.1, §4.2; 0009 migration)
 --
 -- 0009's pgTAP suite already proves student_subjects/subject_papers/chapters
 -- stay student-only at the table level. This file proves the definer RPC that

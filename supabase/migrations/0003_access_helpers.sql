@@ -1,4 +1,4 @@
--- 0003 — access helpers (SPEC.md §3.3)
+-- 0003 — access helpers (ARCHITECTURE.md §3.3)
 --
 -- Every policy predicate in 0008 routes through these. Two reasons:
 --

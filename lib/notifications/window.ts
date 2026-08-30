@@ -1,4 +1,4 @@
-// The alert window, as arithmetic (SPEC.md §7.3, §7.5, §7.6).
+// The alert window, as arithmetic (ARCHITECTURE.md §7.3, §7.5, §7.6).
 //
 // §7.3 replaced an earlier single-guess model outright: a CWM used to get one
 // predicted date and two alerts, and a chapter that stayed unmarked past that

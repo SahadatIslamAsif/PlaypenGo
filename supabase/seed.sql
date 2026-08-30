@@ -1,4 +1,4 @@
--- seed.sql — local-only test fixture (SPEC.md §3.3)
+-- seed.sql — local-only test fixture (ARCHITECTURE.md §3.3)
 --
 -- Referenced by config.toml's [db.seed]. It runs on `supabase db reset` against
 -- a local database and is NEVER applied to a linked project: it installs a test

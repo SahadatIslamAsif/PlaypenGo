@@ -1,5 +1,5 @@
 -- 0013 — guardians write nothing, on any table, under any id
--- (CLAUDE.md "Guardians are read-only"; SPEC.md §1, §3.3; 0012 migration)
+-- (CLAUDE.md "Guardians are read-only"; ARCHITECTURE.md §1, §3.3; 0012 migration)
 --
 -- 0009 and 0011 already assert the case that matters most: a guardian cannot
 -- write rows ABOUT their student. Both did so by aiming the insert at the

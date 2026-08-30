@@ -1,11 +1,11 @@
 // §5.3's exam-paper parse: the wire shape, verbatim. Field names are
-// snake_case exactly as the spec's own JSON block writes them (SPEC.md §5.3,
+// snake_case exactly as the spec's own JSON block writes them (ARCHITECTURE.md §5.3,
 // "Response schema") - this file does not rename anything for JS convention.
 // `lib/scans/parse/adapt.ts` is the only place that translates these into the
 // camelCase types the resolution layer (`lib/scans/*.ts`) already expects.
 //
 // Two additions beyond the spec's literal block, both narrow and both
-// mirrored in docs/SPEC.md §5.3 so the JSON there stays the thing the next
+// mirrored in docs/ARCHITECTURE.md §5.3 so the JSON there stays the thing the next
 // session can actually read off:
 //
 //   * `inferred_chapter` is constrained to an enum of the student's seeded

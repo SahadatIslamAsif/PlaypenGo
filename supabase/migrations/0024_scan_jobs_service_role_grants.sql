@@ -1,4 +1,4 @@
--- 0024 — service_role table grants for the TTL sweep (SPEC.md §5.3, §7.2)
+-- 0024 — service_role table grants for the TTL sweep (ARCHITECTURE.md §5.3, §7.2)
 --
 -- 0021's abandon_expired_scan_jobs() already granted EXECUTE to service_role,
 -- with its own header explaining why: "Called later by Phase 6's cron route

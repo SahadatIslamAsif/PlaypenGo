@@ -1,4 +1,4 @@
--- 0010 — the class routine (SPEC.md §3.2, §3.3, §5.1, §7.3)
+-- 0010 — the class routine (ARCHITECTURE.md §3.2, §3.3, §5.1, §7.3)
 --
 -- The routine is the app's clock. §7.3 resolves a predicted CWM to a calendar
 -- date as "the next date on which that subject appears in the routine", so

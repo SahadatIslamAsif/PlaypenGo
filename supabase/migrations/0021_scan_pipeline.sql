@@ -1,4 +1,4 @@
--- 0021 — the scan pipeline (SPEC.md §3.2, §3.3, §5.3; Phase 5)
+-- 0021 — the scan pipeline (ARCHITECTURE.md §3.2, §3.3, §5.3; Phase 5)
 --
 -- Three tables, two buckets and two RPCs, in one migration because 0006's rule
 -- is that a table enables RLS in the migration that creates it and a bucket

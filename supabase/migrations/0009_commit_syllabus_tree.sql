@@ -1,5 +1,5 @@
 -- 0009 — commit_syllabus_tree(): the tutor write path onto the subject tree
--- (SPEC.md §3.1, §4.2; the decision flagged in 0008 and asserted in 0009's
+-- (ARCHITECTURE.md §3.1, §4.2; the decision flagged in 0008 and asserted in 0009's
 -- pgTAP suite)
 --
 -- 0008 left writes on student_subjects/subject_papers/chapters as student-only
