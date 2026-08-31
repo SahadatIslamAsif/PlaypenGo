@@ -9,6 +9,7 @@
 [![supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 [![tailwind](https://img.shields.io/badge/Tailwind-CSS-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 ![gemini](https://img.shields.io/badge/Gemini-Flash-4285F4?logo=googlegemini&logoColor=white)
+
 **App Live Link**: https://playpengo.vercel.app/
 
 ---
