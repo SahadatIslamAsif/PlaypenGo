@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { createClient } from "@/lib/supabase/server";
+import { ChangePasswordForm } from "./change-password-form";
 import { CodeCard } from "./code-card";
 import { GuardianApprovalRow } from "./guardian-approval-row";
 
@@ -74,6 +75,8 @@ export async function TutorSettings({ userId }: { userId: string }) {
           )}
         </div>
       </Card>
+
+      <ChangePasswordForm />
     </div>
   );
 }

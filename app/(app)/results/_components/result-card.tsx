@@ -31,7 +31,7 @@ export function ResultCard({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   return (
-    <div className="flex items-start justify-between gap-3 rounded-card border border-hairline bg-surface p-4 shadow-soft">
+    <div className="flex min-h-[118px] items-start justify-between gap-3 rounded-card border border-hairline bg-surface p-4 shadow-soft">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-semibold text-ink">{item.subjectName}</p>
@@ -41,7 +41,7 @@ export function ResultCard({
               item.type === "CT" ? "bg-tint-teal text-tint-ink" : "bg-tint-mint text-tint-ink"
             }`}
           >
-            {item.type}
+            {item.type === "CT" ? (item.name ?? "CT") : "CWM"}
           </span>
         </div>
         {item.chapterNames.length > 0 ? (

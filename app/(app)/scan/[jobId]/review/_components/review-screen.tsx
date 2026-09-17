@@ -517,7 +517,7 @@ export function ReviewScreen({
         <Card className="flex flex-col gap-2">
           <p className="text-sm font-semibold text-ink">
             {attachmentPreview.matchedBy === "ct-date"
-              ? "Will attach to the CT already scheduled for this date"
+              ? `Will attach to ${attachmentPreview.ctName ?? "the CT"} already scheduled for this date`
               : attachmentPreview.matchedBy === "cwm-chapter"
                 ? "Will attach to the open CWM window for this chapter"
                 : "Will attach to the oldest open CWM window for this subject"}
@@ -535,11 +535,14 @@ export function ReviewScreen({
       ) : attachmentPreview && attachmentPreview.ctOptions.length > 0 ? (
         <Card className="flex flex-col gap-2">
           <p className="text-sm font-semibold text-ink">
-            No CT is scheduled for this exact date
+            {attachmentPreview.ctOptions.every((o) => o.scheduledDate === attachmentPreview.ctOptions[0].scheduledDate) &&
+            attachmentPreview.ctOptions.length > 1
+              ? "More than one CT is scheduled for this date"
+              : "No CT is scheduled for this exact date"}
           </p>
           <p className="text-xs text-muted">
-            Attach to one of this subject&apos;s other scheduled CTs instead - a postponement, maybe
-            - or leave it as a new assessment.
+            Attach to one of this subject&apos;s scheduled CTs by name instead - a postponement,
+            maybe - or leave it as a new assessment.
           </p>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-sm text-body">
@@ -561,7 +564,7 @@ export function ReviewScreen({
                   onChange={() => setSelectedCtOption(option.id)}
                   className="h-4 w-4 accent-[color:var(--accent)]"
                 />
-                The CT scheduled for {option.scheduledDate}
+                {option.name ?? "CT"} · scheduled for {option.scheduledDate}
               </label>
             ))}
           </div>

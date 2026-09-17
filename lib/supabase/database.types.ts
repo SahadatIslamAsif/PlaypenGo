@@ -126,6 +126,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          name: string | null
           occurred_date: string | null
           paper_id: string | null
           scheduled_date: string | null
@@ -140,6 +141,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          name?: string | null
           occurred_date?: string | null
           paper_id?: string | null
           scheduled_date?: string | null
@@ -154,6 +156,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          name?: string | null
           occurred_date?: string | null
           paper_id?: string | null
           scheduled_date?: string | null
@@ -201,6 +204,7 @@ export type Database = {
           id: string
           name: string
           paper_id: string | null
+          parsed_name: string | null
           semester: string | null
           session_label: string | null
           sort_order: number
@@ -209,12 +213,14 @@ export type Database = {
           status_updated_at: string
           student_id: string
           student_subject_id: string
+          syllabus_removed_at: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           paper_id?: string | null
+          parsed_name?: string | null
           semester?: string | null
           session_label?: string | null
           sort_order?: number
@@ -223,12 +229,14 @@ export type Database = {
           status_updated_at?: string
           student_id: string
           student_subject_id: string
+          syllabus_removed_at?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           paper_id?: string | null
+          parsed_name?: string | null
           semester?: string | null
           session_label?: string | null
           sort_order?: number
@@ -237,6 +245,7 @@ export type Database = {
           status_updated_at?: string
           student_id?: string
           student_subject_id?: string
+          syllabus_removed_at?: string | null
         }
         Relationships: [
           {
@@ -480,7 +489,7 @@ export type Database = {
           full_name: string
           id: string
           role: string
-          school: string
+          school: string | null
           section: string | null
           session_label: string | null
           timezone: string
@@ -492,7 +501,7 @@ export type Database = {
           full_name: string
           id: string
           role: string
-          school?: string
+          school?: string | null
           section?: string | null
           session_label?: string | null
           timezone?: string
@@ -504,7 +513,7 @@ export type Database = {
           full_name?: string
           id?: string
           role?: string
-          school?: string
+          school?: string | null
           section?: string | null
           session_label?: string | null
           timezone?: string
@@ -1115,6 +1124,7 @@ export type Database = {
       }
       my_role: { Args: never; Returns: string }
       redeem_link_code: { Args: { p_code: string }; Returns: Json }
+      save_ct: { Args: { p_entry: Json; p_student: string }; Returns: Json }
       set_assessment_chapters: {
         Args: { p_assessment: string; p_chapters: string[] }
         Returns: undefined

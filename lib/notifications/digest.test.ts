@@ -18,6 +18,7 @@ import {
   type DigestAssessment,
   type DigestInput,
   type DigestResult,
+  type DigestUnlogged,
   type StudentDigest,
 } from "./digest";
 
@@ -32,6 +33,18 @@ function assessment(
     type: "CWM",
     predicted: true,
     chapter: null,
+    name: null,
+    ...partial,
+  };
+}
+
+function unlogged(
+  partial: Partial<DigestUnlogged> & { subject: string; occurredDate: string },
+): DigestUnlogged {
+  return {
+    type: "CWM",
+    daysWaiting: 0,
+    name: null,
     ...partial,
   };
 }
@@ -152,8 +165,8 @@ describe("composeStudentDigest — §7.4's sections", () => {
     const digest = composeStudentDigest(
       input({
         unlogged: [
-          { subject: "Physics", type: "CWM", occurredDate: "2026-08-26", daysWaiting: 3 },
-          { subject: "Maths", type: "CT", occurredDate: "2026-08-22", daysWaiting: 7 },
+          unlogged({ subject: "Physics", type: "CWM", occurredDate: "2026-08-26", daysWaiting: 3 }),
+          unlogged({ subject: "Maths", type: "CT", occurredDate: "2026-08-22", daysWaiting: 7 }),
         ],
       }),
     );
@@ -327,7 +340,7 @@ describe("subjectLine — §7.4's adaptive line", () => {
   it("names an unlogged paper rather than going generic", () => {
     const digest = composeStudentDigest(
       input({
-        unlogged: [{ subject: "Physics", type: "CWM", occurredDate: "2026-08-26", daysWaiting: 3 }],
+        unlogged: [unlogged({ subject: "Physics", type: "CWM", occurredDate: "2026-08-26", daysWaiting: 3 })],
       }),
     );
 
@@ -359,15 +372,15 @@ describe("composeTutorDigest — §7.4, §8", () => {
     const digest = composeTutorDigest(TODAY, { id: "t1", name: "Asif" }, [
       {
         digest: studentDigest("Ayan", {
-          unlogged: [{ subject: "Physics", type: "CWM", occurredDate: "2026-08-26", daysWaiting: 3 }],
+          unlogged: [unlogged({ subject: "Physics", type: "CWM", occurredDate: "2026-08-26", daysWaiting: 3 })],
         }),
         trend: "flat",
       },
       {
         digest: studentDigest("Rakib", {
           unlogged: [
-            { subject: "Physics", type: "CWM", occurredDate: "2026-08-26", daysWaiting: 3 },
-            { subject: "Maths", type: "CT", occurredDate: "2026-08-24", daysWaiting: 5 },
+            unlogged({ subject: "Physics", type: "CWM", occurredDate: "2026-08-26", daysWaiting: 3 }),
+            unlogged({ subject: "Maths", type: "CT", occurredDate: "2026-08-24", daysWaiting: 5 }),
           ],
         }),
         trend: "down",
@@ -390,7 +403,7 @@ describe("composeTutorDigest — §7.4, §8", () => {
       {
         digest: studentDigest("Rakib", {
           upcoming: [assessment({ subject: "Physics", date: "2026-08-30" })],
-          unlogged: [{ subject: "Maths", type: "CT", occurredDate: "2026-08-24", daysWaiting: 5 }],
+          unlogged: [unlogged({ subject: "Maths", type: "CT", occurredDate: "2026-08-24", daysWaiting: 5 })],
         }),
         trend: "down",
       },
@@ -424,5 +437,19 @@ describe("describeAssessment", () => {
         assessment({ subject: "Physics", date: "2026-08-30", type: "CT", predicted: false }),
       ),
     ).toBe("Physics CT");
+  });
+
+  it("names a CT instead of the generic label once it has one — 0031", () => {
+    expect(
+      describeAssessment(
+        assessment({
+          subject: "Physics",
+          date: "2026-08-30",
+          type: "CT",
+          predicted: false,
+          name: "CT 2",
+        }),
+      ),
+    ).toBe("Physics CT 2");
   });
 });

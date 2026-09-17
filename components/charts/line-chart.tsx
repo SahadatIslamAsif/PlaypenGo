@@ -21,7 +21,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 // Fritsch-Carlson monotone-cubic implementation.
 
 export type ChartPoint = { x: string; y: number };
-export type ChartSeries = { id: string; label: string; points: ChartPoint[] };
+export type ChartSeries = {
+  id: string;
+  label: string;
+  points: ChartPoint[];
+  /** Renders this series' line dashed rather than solid - CT vs. CWM on one
+   *  subject's chart, say, where colour alone isn't enough to tell them
+   *  apart at a glance (and shouldn't have to be, for anyone colour-blind). */
+  dashed?: boolean;
+};
 
 const SERIES_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"];
 const GRIDLINES = [0, 25, 50, 75, 100];
@@ -63,14 +71,29 @@ export function LineChart({
   useResizeWidth(containerRef, setWidth);
 
   const activeIndex = pinned ?? hovered;
+  const activeX = activeIndex !== null && allX[activeIndex] ? xPos(allX[activeIndex]) : null;
+  // Percentage across the plot area, clamped so the tooltip pill never hangs
+  // off either edge of the card. Positioned as an absolute overlay (below)
+  // rather than in normal flow, so it never changes the container's height —
+  // a height change here used to shift whatever sits below the chart on
+  // every hover, which under a moving cursor re-triggers mouseleave/enter in
+  // a loop (the flicker this was reported as).
+  const tooltipLeftPct =
+    activeX !== null
+      ? Math.min(Math.max(((padding.left + activeX) / width) * 100, 12), 88)
+      : null;
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div
+      ref={containerRef}
+      className="relative w-full max-w-full overflow-hidden"
+      style={{ height, minHeight: height }}
+    >
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label={ariaLabel}
-        className="w-full touch-none"
+        className="h-full w-full touch-none"
         onMouseLeave={() => setHovered(null)}
         onMouseMove={(e) => {
           if (allX.length === 0) return;
@@ -121,7 +144,14 @@ export function LineChart({
                 {areaPath ? (
                   <path d={areaPath} fill={`url(#chart-area-${i})`} stroke="none" />
                 ) : null}
-                <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" />
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeDasharray={s.dashed ? "6 4" : undefined}
+                />
                 {pts.map((p, idx) => (
                   <circle
                     key={idx}
@@ -161,12 +191,13 @@ export function LineChart({
         </g>
       </svg>
 
-      {activeIndex !== null && allX[activeIndex] ? (
+      {activeIndex !== null && allX[activeIndex] && tooltipLeftPct !== null ? (
         <Tooltip
           date={allX[activeIndex]}
           series={series}
           pinned={pinned !== null}
           onDismiss={() => setPinned(null)}
+          leftPct={tooltipLeftPct}
         />
       ) : null}
     </div>
@@ -178,11 +209,13 @@ function Tooltip({
   series,
   pinned,
   onDismiss,
+  leftPct,
 }: {
   date: string;
   series: ChartSeries[];
   pinned: boolean;
   onDismiss: () => void;
+  leftPct: number;
 }) {
   const rows = series
     .map((s) => ({ label: s.label, point: s.points.find((p) => p.x === date) }))
@@ -191,8 +224,16 @@ function Tooltip({
   if (rows.length === 0) return null;
 
   return (
-    <div className="mt-2 flex items-start justify-between">
-      <div className="inline-flex flex-col gap-0.5 rounded-[10px] bg-ink px-3 py-2 text-xs font-semibold text-shell">
+    // Absolutely positioned overlay, never in normal flow — see the height-
+    // lock comment above. pointer-events-none (and select-none) on the pill
+    // itself so it can never steal the mousemove/mouseleave events the SVG
+    // needs to keep tracking the cursor; only the Unpin button opts back in
+    // to being clickable.
+    <div
+      className="pointer-events-none absolute top-2 z-10 -translate-x-1/2 select-none"
+      style={{ left: `${leftPct}%` }}
+    >
+      <div className="inline-flex flex-col gap-0.5 rounded-[10px] bg-ink px-3 py-2 text-xs font-semibold text-shell shadow-elevated">
         <span className="text-[10px] font-normal text-shell/70">{date}</span>
         {rows.map((r) => (
           <span key={r.label}>
@@ -204,7 +245,7 @@ function Tooltip({
         <button
           type="button"
           onClick={onDismiss}
-          className="text-xs text-muted underline underline-offset-2"
+          className="pointer-events-auto mt-1 text-xs text-muted underline underline-offset-2"
         >
           Unpin
         </button>

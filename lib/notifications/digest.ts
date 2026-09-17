@@ -38,6 +38,8 @@ export type DigestAssessment = {
    */
   predicted: boolean;
   chapter: string | null;
+  /** 0031, CT-only - `name ?? "CT"` at render time, same as everywhere else. */
+  name: string | null;
 };
 
 export type DigestResult = {
@@ -67,6 +69,8 @@ export type DigestUnlogged = {
   type: AssessmentType;
   occurredDate: string;
   daysWaiting: number;
+  /** 0031, CT-only - `name ?? "CT"` at render time, same as everywhere else. */
+  name: string | null;
 };
 
 /** §7.4 section 7, Thursdays only. */
@@ -190,10 +194,11 @@ export function isEmptyDigest(digest: StudentDigest): boolean {
   );
 }
 
-/** "Physics CT", "Chemistry CWM likely". */
+/** "Physics CT 2", "Chemistry CWM likely". */
 export function describeAssessment(a: DigestAssessment): string {
-  const name = a.paper ? `${a.subject} ${a.paper}` : a.subject;
-  return a.predicted ? `${name} ${a.type} likely` : `${name} ${a.type}`;
+  const subject = a.paper ? `${a.subject} ${a.paper}` : a.subject;
+  if (a.type === "CT") return `${subject} ${a.name ?? "CT"}`;
+  return a.predicted ? `${subject} ${a.type} likely` : `${subject} ${a.type}`;
 }
 
 /** How many assessments a subject line names before it says "+N more". */

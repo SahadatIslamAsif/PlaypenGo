@@ -40,5 +40,11 @@ enable_signup = true
 
 [auth.email]
 enable_signup = true
-enable_confirmations = false
+enable_confirmations = true
 double_confirm_changes = true
+
+# Custom-branded confirmation email, sent by GoTrue itself on signup — see
+# app/auth/confirm/route.ts for the corresponding verify step.
+[auth.email.template.confirmation]
+subject = "Confirm your email — PlaypenGo"
+content_path = "./supabase/templates/confirmation.html"

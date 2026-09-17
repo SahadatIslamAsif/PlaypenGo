@@ -31,11 +31,11 @@ describe("namesMatch", () => {
 
 describe("findCTAttachment", () => {
   const candidates: CTCandidate[] = [
-    { id: "ct1", scheduledDate: "2026-08-20" },
-    { id: "ct2", scheduledDate: "2026-08-27" },
+    { id: "ct1", scheduledDate: "2026-08-20", name: "CT 1" },
+    { id: "ct2", scheduledDate: "2026-08-27", name: "CT 2" },
   ];
 
-  it("auto-attaches only on an exact date match", () => {
+  it("auto-attaches only on a single exact date match", () => {
     expect(findCTAttachment(candidates, "2026-08-20")).toEqual({ matchId: "ct1", options: [] });
   });
 
@@ -48,6 +48,18 @@ describe("findCTAttachment", () => {
 
   it("offers nothing when there is no open CT for the subject at all", () => {
     expect(findCTAttachment([], "2026-08-22")).toEqual({ matchId: null, options: [] });
+  });
+
+  it("never picks arbitrarily among two CTs sharing the same date - offers both instead", () => {
+    const sameDate: CTCandidate[] = [
+      { id: "ct1", scheduledDate: "2026-08-20", name: "CT 1" },
+      { id: "ct2", scheduledDate: "2026-08-20", name: "CT 2" },
+      { id: "ct3", scheduledDate: "2026-08-27", name: "CT 3" },
+    ];
+    expect(findCTAttachment(sameDate, "2026-08-20")).toEqual({
+      matchId: null,
+      options: [sameDate[0], sameDate[1]],
+    });
   });
 });
 

@@ -74,18 +74,23 @@ export default async function SubjectsPage() {
         .order("sort_order"),
       supabase
         .from("chapters")
-        .select("id, student_subject_id, paper_id, name, status, sort_order")
+        .select("id, student_subject_id, paper_id, name, status, sort_order, syllabus_removed_at")
         .eq("student_id", studentId)
         .order("sort_order"),
       editable
         ? supabase.from("subjects_catalog").select("id, name, common_aliases").order("name")
         : Promise.resolve({ data: [] }),
-      // §8: "Assign / edit CT date on any chapter." Every CT for the
-      // student — buildSubjectTree() matches against ctChapterLinks below,
-      // so an assessment with no chapter link simply attaches to nothing.
+      // Every CT for the student — buildSubjectTree() matches against
+      // ctChapterLinks below (vestigial: nothing in the UI reads
+      // ChapterNode.ct any more, now that a CT is scheduled at the subject
+      // level, but the tree stays exactly the shape it already is rather
+      // than touching that code path for this change). student_subject_id
+      // is read here for the default "CT N" name the schedule sheet
+      // proposes - 0031's backfill numbers by count per subject, and the UI
+      // has to compute the same number to stay in step with it.
       supabase
         .from("assessments")
-        .select("id, scheduled_date, status")
+        .select("id, scheduled_date, status, student_subject_id")
         .eq("student_id", studentId)
         .eq("type", "CT")
         .order("created_at", { ascending: true }),
@@ -111,6 +116,15 @@ export default async function SubjectsPage() {
       .map((a) => a.scheduled_date as string),
   );
 
+  // 0031's backfill numbers "CT N" by count per subject, cancelled rows
+  // included - the schedule sheet's default name has to count the same way,
+  // or a student with three CTs (one cancelled) would be offered "CT 3" for
+  // what 0031 already numbered "CT 4".
+  const ctCounts = new Map<string, number>();
+  for (const a of ctAssessments ?? []) {
+    ctCounts.set(a.student_subject_id, (ctCounts.get(a.student_subject_id) ?? 0) + 1);
+  }
+
   return (
     <SubjectTree
       tree={tree}
@@ -119,6 +133,7 @@ export default async function SubjectsPage() {
       studentId={studentId}
       today={today}
       ctDates={ctDates}
+      ctCounts={ctCounts}
     />
   );
 }

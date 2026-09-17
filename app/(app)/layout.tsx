@@ -51,7 +51,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const role = (profile?.role as "student" | "guardian" | "tutor" | undefined) ?? "student";
 
   return (
-    <div className="min-h-screen bg-wash sm:h-dvh sm:overflow-hidden">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-wash sm:h-dvh sm:overflow-y-hidden">
       {/* ---------------------------------------------------------- >=640 --- */}
       <div className="mx-auto hidden max-w-6xl sm:flex sm:h-full sm:min-h-0 sm:flex-col sm:gap-4 sm:px-6 sm:py-6">
         <Header fullName={profile?.full_name ?? null} role={role} />
@@ -63,18 +63,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex lg:hidden">
               <IconRail role={role} />
             </div>
-            <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6">{children}</main>
+            <main className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto p-6">{children}</main>
           </div>
         ) : (
-          <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+          <main className="min-h-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto">{children}</main>
         )}
       </div>
 
       {/* ----------------------------------------------------------- <640 --- */}
-      <div className="flex min-h-screen flex-col gap-4 pb-nav-clear sm:hidden">
+      <div className="flex min-h-screen max-w-full flex-col gap-4 overflow-x-hidden pb-nav-clear sm:hidden">
         <Header fullName={profile?.full_name ?? null} role={role} compact />
         {role === "guardian" && profile ? <SegmentedNav /> : null}
-        <main className="flex-1 px-3">{children}</main>
+        <main className="min-w-0 max-w-full flex-1 overflow-x-hidden px-3">{children}</main>
         {profile && role !== "guardian" ? <BottomTabs role={role} /> : null}
       </div>
 

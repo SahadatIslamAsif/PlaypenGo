@@ -2,8 +2,8 @@ import { Card } from "@/components/ui/card";
 import { StatCard, type StatCardData } from "./stat-card";
 
 // Two layouts sharing one card: a wrapping row on desktop, a snap-scrolling
-// carousel on mobile (design system: "the three stat cards as a
-// snap-scrolling carousel").
+// carousel on mobile (design system: "the stat cards as a snap-scrolling
+// carousel").
 //
 // emptyVariant exists because the empty state needs different framing
 // depending on whether the caller already put it inside a Card of its own:

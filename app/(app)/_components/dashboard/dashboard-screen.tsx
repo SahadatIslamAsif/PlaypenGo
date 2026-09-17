@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
-import { MiniCalendar } from "../mini-calendar";
-import { DesktopProgressChart, MobileProgressChart } from "./progress-chart";
+import { DaySchedulePanel } from "./day-schedule-panel";
+import { TrendChart } from "./progress-chart";
 import { StatCardsRow } from "./stat-cards-row";
 import { TodayTimeline } from "./today-timeline";
 import { UpcomingList } from "./upcoming-list";
@@ -22,30 +22,50 @@ import type { StatCardData } from "./stat-card";
 
 export function DashboardScreen({
   studentName,
+  viewerName,
+  viewerRole,
   statCards,
   series,
   upcoming,
   today,
   todaysPeriods,
+  routinePeriods,
   subjectNames,
   ctDates,
 }: {
   studentName: string | null;
+  /** The signed-in user's own name — the student, when viewerRole is
+   *  "student"; otherwise whoever is looking at this student's dashboard on
+   *  their behalf. */
+  viewerName: string | null;
+  viewerRole: "student" | "guardian" | "tutor";
   statCards: StatCardData[];
   series: SubjectSeries[];
   upcoming: UpcomingItem[];
   today: string;
   todaysPeriods: RoutinePeriodRow[];
+  /** The full week's periods (all `day_of_week` rows), so the desktop rail's
+   *  calendar can show any picked date's classes without a fetch. */
+  routinePeriods: RoutinePeriodRow[];
   subjectNames: Map<string, string>;
   ctDates: Set<string>;
 }) {
+  // A guardian (or tutor) is looking at someone else's dashboard, so the
+  // greeting addresses them by their own name, not the student's — "Good
+  // morning, Student" read like the app didn't know who it was talking to.
+  // The student's name stays visible underneath instead of disappearing.
+  const isOwnDashboard = viewerRole === "student";
+
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="font-display text-2xl font-semibold text-ink max-sm:text-xl">
           {greeting()}
-          {studentName ? `, ${firstName(studentName)}` : ""}
+          {viewerName ? `, ${firstName(viewerName)}` : ""}
         </h1>
+        {!isOwnDashboard && studentName ? (
+          <p className="text-sm font-normal text-muted">Student: {studentName}</p>
+        ) : null}
       </div>
 
       {/* ---------------------------------------------------------- mobile --- */}
@@ -65,37 +85,37 @@ export function DashboardScreen({
           <StatCardsRow items={statCards} layout="carousel" />
         </Card>
 
-        <Card>
+        <Card className="min-w-0 max-w-full overflow-hidden">
           <p className="mb-3 text-sm font-semibold text-ink">Your progress</p>
-          <MobileProgressChart series={series} today={today} />
+          <TrendChart series={series} today={today} weeksLimit={6} />
         </Card>
       </div>
 
       {/* --------------------------------------------------------- desktop --- */}
-      <div className="hidden gap-5 lg:grid lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-5">
-          <StatCardsRow items={statCards} layout="grid" emptyVariant="card" />
+      <div className="hidden flex-col gap-5 lg:flex">
+        <StatCardsRow items={statCards} layout="grid" emptyVariant="card" />
 
-          <Card>
-            <p className="mb-3 text-sm font-semibold text-ink">Your progress</p>
-            <DesktopProgressChart series={series} />
-          </Card>
+        <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+          <div className="flex min-w-0 flex-col gap-5">
+            <Card className="min-w-0 max-w-full overflow-hidden">
+              <p className="mb-3 text-sm font-semibold text-ink">Your progress</p>
+              <TrendChart series={series} today={today} />
+            </Card>
 
-          <Card>
-            <p className="mb-3 text-sm font-semibold text-ink">Coming up</p>
-            <UpcomingList items={upcoming} today={today} />
-          </Card>
-        </div>
+            <Card>
+              <p className="mb-3 text-sm font-semibold text-ink">Coming up</p>
+              <UpcomingList items={upcoming} today={today} />
+            </Card>
+          </div>
 
-        <div className="flex flex-col gap-5">
-          <Card>
-            <MiniCalendar today={today} ctDates={ctDates} />
-          </Card>
-
-          <Card>
-            <p className="mb-3 text-sm font-semibold text-ink">Today</p>
-            <TodayTimeline periods={todaysPeriods} subjectNames={subjectNames} />
-          </Card>
+          <div className="flex min-w-0 flex-col gap-5">
+            <DaySchedulePanel
+              today={today}
+              ctDates={ctDates}
+              routinePeriods={routinePeriods}
+              subjectNames={subjectNames}
+            />
+          </div>
         </div>
       </div>
     </div>

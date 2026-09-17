@@ -1,7 +1,8 @@
 "use client";
 
 import { Camera, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { useCameraCapture } from "../../_components/camera-capture";
 import { compressImage } from "@/lib/images/compress";
 import { routineImagePath, ROUTINES_BUCKET } from "@/lib/routines/storage";
 import { createClient } from "@/lib/supabase/client";
@@ -29,7 +30,6 @@ export function RoutinePhoto({
   editable: boolean;
   onUploaded: (path: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +66,10 @@ export function RoutinePhoto({
     }
   }
 
+  const { open: openCamera, modal: cameraModal, fallbackInputProps } = useCameraCapture(
+    (file) => void handleFile(file),
+  );
+
   if (!shown && !editable) return null;
 
   return (
@@ -93,7 +97,7 @@ export function RoutinePhoto({
           <div className="flex min-w-0 flex-col gap-1">
             <button
               type="button"
-              onClick={() => inputRef.current?.click()}
+              onClick={openCamera}
               disabled={busy}
               className="inline-flex h-11 items-center gap-2 rounded-button border border-hairline bg-surface px-3 text-sm font-medium text-ink transition-colors hover:bg-surface-sunk disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
@@ -106,21 +110,14 @@ export function RoutinePhoto({
           </div>
         ) : null}
 
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          // Straight to the camera on a phone, per the mobile scan rules — the
-          // student is photographing a routine on the wall, not picking a file.
-          capture="environment"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleFile(file);
-            e.target.value = "";
-          }}
-        />
+        {/* Straight to the camera on a phone, per the mobile scan rules — the
+            student is photographing a routine on the wall, not picking a
+            file. useCameraCapture tries getUserMedia first; this stays as
+            its fallback. */}
+        <input {...fallbackInputProps} />
       </div>
+
+      {cameraModal}
 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 

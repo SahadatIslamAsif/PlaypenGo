@@ -2,8 +2,9 @@
 
 import { Camera, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useCameraCapture } from "../../_components/camera-capture";
 import { compressImage } from "@/lib/images/compress";
 import {
   abandonScanJob,
@@ -72,7 +73,6 @@ export function ScanScreen({
    * result's id, instead of one job per paper). */
   attachTarget: { resultId: string; label: string } | null;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [pages, setPages] = useState<CapturedPage[]>([]);
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +107,10 @@ export function ScanScreen({
       setCapturing(false);
     }
   }
+
+  const { open: openCamera, modal: cameraModal, fallbackInputProps } = useCameraCapture(
+    (file) => void handleCapture(file),
+  );
 
   function toggleSame(id: string) {
     setPages((prev) =>
@@ -226,6 +230,16 @@ export function ScanScreen({
     // §5.3: "A failed job can be re-parsed without re-uploading the
     // images." Its scan_pages rows are untouched by a failure - only the
     // job's own status/error changed - so this just re-triggers the parse.
+    //
+    // Also reachable from a 'parsing' row (the parse route accepts a
+    // re-POST in that status too - PARSEABLE_STATUSES includes 'parsing').
+    // That covers a job whose original request never reached the route, or
+    // whose invocation was killed server-side before it could write
+    // 'failed' - previously a permanent dead end with no server-side owner
+    // left to revisit it, recoverable before now only via the 7-day TTL
+    // sweep discarding it outright. A student retrying a request that is
+    // genuinely still in flight can race it - see the "never invoked" vs
+    // "died mid-parse" discussion before loosening this further.
     setSubmittedJobs((prev) =>
       prev.map((j) => (j.id === jobId ? { id: j.id, status: "parsing", error: null } : j)),
     );
@@ -302,7 +316,7 @@ export function ScanScreen({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={openCamera}
           disabled={capturing || atCap || saving}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-button border border-hairline bg-surface px-3 text-sm font-medium text-ink transition-colors hover:bg-surface-sunk disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-36"
         >
@@ -313,19 +327,10 @@ export function ScanScreen({
           {capturing ? "Adding…" : atCap ? "Limit reached" : `${pages.length} of ${MAX_PAGES} pages`}
         </p>
 
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleCapture(file);
-            e.target.value = "";
-          }}
-        />
+        <input {...fallbackInputProps} />
       </div>
+
+      {cameraModal}
 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
@@ -343,30 +348,35 @@ export function ScanScreen({
                   <p className="truncate text-xs text-muted">{job.error}</p>
                 ) : null}
               </div>
-              {job.status === "failed" ? (
-                <button
-                  type="button"
-                  onClick={() => retryParse(job.id)}
-                  className="shrink-0 text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  Retry
-                </button>
-              ) : job.status === "uploading" ? (
+              <div className="flex shrink-0 items-center gap-3">
+                {job.status === "failed" || job.status === "parsing" ? (
+                  <button
+                    type="button"
+                    onClick={() => retryParse(job.id)}
+                    className="text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Retry
+                  </button>
+                ) : job.status === "review" ? (
+                  <Link
+                    href={`/scan/${job.id}/review`}
+                    className="text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Review
+                  </Link>
+                ) : null}
+                {/* Every non-terminal job gets a way out without waiting on
+                    abandon_expired_scan_jobs's 7-day TTL sweep - a 'parsing'
+                    row with no server-side owner left (route never invoked,
+                    or killed mid-parse) used to have no recourse at all. */}
                 <button
                   type="button"
                   onClick={() => discardJob(job.id)}
-                  className="shrink-0 text-sm font-medium text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="text-sm font-medium text-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   Discard
                 </button>
-              ) : job.status === "review" ? (
-                <Link
-                  href={`/scan/${job.id}/review`}
-                  className="shrink-0 text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  Review
-                </Link>
-              ) : null}
+              </div>
             </div>
           ))}
         </div>

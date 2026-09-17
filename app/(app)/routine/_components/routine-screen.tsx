@@ -21,6 +21,8 @@ import {
   type DayOfWeek,
   type RoutineGrid,
 } from "@/lib/routines/grid";
+import { adaptRoutineParse } from "@/lib/routines/parse/adapt";
+import type { RawRoutineParse } from "@/lib/routines/parse/schema";
 import { formatTime } from "@/lib/routines/schedule";
 import type { SubjectCandidate } from "@/lib/routines/resolve";
 
@@ -66,12 +68,23 @@ export function RoutineScreen({
   const [bellOpen, setBellOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const warnings = useMemo(
     () => crosscheckRoutine(grid, subjects.map((s) => ({ id: s.id, display_name: s.display_name }))),
     [grid, subjects],
   );
+
+  // An academic cell saved with no subject attached isn't a cosmetic issue
+  // the way the other warning kinds are - it silently drops that weekday
+  // from every subject-keyed read of the routine (nextClassDay(), §7.3's CWM
+  // windows, "Coming up"), which is a wrong alert date, not a missing one.
+  // The other three warning kinds stay advisory (crosscheck.ts's own header:
+  // "nothing here blocks a save") because each has a legitimate shape - a
+  // subject really can sit out a term, a break column really can get typed
+  // out instead of drawn vertically.
+  const unresolvedCount = warnings.filter((w) => w.kind === "unresolved_cell").length;
 
   function commitAll(next: RoutineGrid = grid, path = imagePath) {
     setError(null);
@@ -89,6 +102,43 @@ export function RoutineScreen({
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
     });
+  }
+
+  /**
+   * §5.1's step-2 parse, triggered right after a photo lands in the routines
+   * bucket, whether this is the first photo or a replacement of an
+   * already-committed routine's. The caller has already switched to draft
+   * mode - "draft... is the shape §5.1's parse review needs" (this file's own
+   * header comment) - so the result is always reviewed before Save routine
+   * writes anything. A failed parse leaves the draft grid and photo exactly
+   * as they were - nothing here is destructive on error - and the committed
+   * routine underneath is untouched until the review is actually saved.
+   */
+  function parseAndFillGrid(path: string) {
+    setError(null);
+    setParsing(true);
+    void (async () => {
+      try {
+        const response = await fetch("/api/routines/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imagePath: path,
+            subjectNames: subjects.map((s) => s.display_name),
+          }),
+        });
+        const body = (await response.json()) as { raw?: RawRoutineParse; error?: string };
+        if (!response.ok || !body.raw) {
+          setError(body.error ?? "The routine photo couldn't be read.");
+          return;
+        }
+        setGrid(adaptRoutineParse(body.raw, subjects));
+      } catch {
+        setError("The routine photo couldn't be read. Check your connection and try again.");
+      } finally {
+        setParsing(false);
+      }
+    })();
   }
 
   function updateCell(day: DayOfWeek, columnIndex: number, patch: Parameters<typeof setCell>[3]) {
@@ -129,18 +179,24 @@ export function RoutineScreen({
     });
   }
 
-  const status = pending
-    ? "Saving…"
-    : saved
-      ? "Saved"
-      : mode === "draft"
-        ? "Not saved yet"
-        : null;
+  const status = parsing
+    ? "Reading your routine…"
+    : pending
+      ? "Saving…"
+      : saved
+        ? "Saved"
+        : mode === "draft"
+          ? "Not saved yet"
+          : null;
 
   return (
     <div className="flex flex-col gap-4 pb-nav-clear lg:pb-0">
       {/* ------------------------------------------------------------ head --- */}
-      <Card className="flex flex-col gap-4">
+      {/* Sticky: Save routine / Cancel live here, not after the grid, so
+          they're still on screen after scrolling past a change made near the
+          top of a long table — no scrolling to the bottom to save a top-row
+          edit. */}
+      <Card className="sticky top-0 z-20 flex flex-col gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-xl font-semibold text-ink">Routine</h1>
@@ -151,7 +207,7 @@ export function RoutineScreen({
           </div>
 
           {editable ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="secondary"
@@ -172,10 +228,48 @@ export function RoutineScreen({
                   <Pencil className="h-4 w-4" strokeWidth={1.5} />
                   Edit routine
                 </Button>
-              ) : null}
+              ) : (
+                <>
+                  {hasCommittedRoutine ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setGrid(initialGrid);
+                        setMode("live");
+                      }}
+                      disabled={pending}
+                    >
+                      Cancel
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    onClick={() => commitAll()}
+                    disabled={pending || parsing || unresolvedCount > 0}
+                    title={
+                      parsing
+                        ? "Wait for the photo to finish reading"
+                        : unresolvedCount > 0
+                          ? "Resolve every unmatched period before saving"
+                          : undefined
+                    }
+                  >
+                    {pending ? "Saving…" : "Save routine"}
+                  </Button>
+                </>
+              )}
             </div>
           ) : null}
         </div>
+
+        {mode === "draft" && unresolvedCount > 0 ? (
+          <p className="text-xs text-danger">
+            {unresolvedCount === 1
+              ? "One period isn't matched to a subject yet. Pick one, or type \"Break\" if it's a break period, before saving."
+              : `${unresolvedCount} periods aren't matched to a subject yet. Pick one for each, or type "Break" for a break period, before saving.`}
+          </p>
+        ) : null}
 
         <RoutinePhoto
           studentId={studentId}
@@ -184,10 +278,19 @@ export function RoutineScreen({
           editable={editable}
           onUploaded={(path) => {
             setImagePath(path);
-            // Recording the photo means committing the grid with it —
-            // routines is student-only at the table level, so a direct update
-            // would write nothing at all and report success.
-            commitAll(grid, path);
+            // Always re-read the new photo, even over an already-committed
+            // routine. It used to skip straight to commitAll(grid, path) in
+            // live mode, treating a photo replacement as a bare admin action
+            // that couldn't itself carry new information — but a re-uploaded
+            // photo is exactly the case where the printed routine actually
+            // changed and the parse most needs to run. That path silently
+            // re-saved the *old* grid under the *new* photo and never called
+            // Gemini, so the grid stopped matching the picture beside it.
+            // Parsing here and dropping into draft mode (§5.1's review step)
+            // means every upload gets read and reviewed the same way,
+            // whether it's the first photo or the fifth.
+            setMode("draft");
+            parseAndFillGrid(path);
           }}
         />
 
@@ -261,7 +364,7 @@ export function RoutineScreen({
                   <PeriodCell
                     cell={cell}
                     subjects={subjects}
-                    editable={editable}
+                    editable={editable && mode === "draft"}
                     layout="row"
                     onChange={(patch) => updateCell(selectedDay, columnIndex, patch)}
                     onCommit={() => commitCell(selectedDay, columnIndex)}
@@ -322,7 +425,7 @@ export function RoutineScreen({
                       <PeriodCell
                         cell={grid.cells[day][columnIndex]}
                         subjects={subjects}
-                        editable={editable}
+                        editable={editable && mode === "draft"}
                         layout="cell"
                         onChange={(patch) => updateCell(day, columnIndex, patch)}
                         onCommit={() => commitCell(day, columnIndex)}
@@ -339,39 +442,6 @@ export function RoutineScreen({
           ) : null}
         </Card>
       </div>
-
-      {/* ------------------------------------------------------- save bar --- */}
-      {/* A floating pair of pills, not a boxed bar - same reasoning as
-          scan-screen.tsx's Done button: no bg-surface/border wrapper to
-          read as a white frame, no chrome the Scan circle's own
-          shadow-only treatment already argues against. */}
-      {editable && mode === "draft" ? (
-        <div className="fixed inset-x-3 bottom-nav-clear z-20 sm:static sm:inset-auto">
-          <div className="mx-auto flex max-w-3xl items-center gap-3">
-            {hasCommittedRoutine ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setGrid(initialGrid);
-                  setMode("live");
-                }}
-                disabled={pending}
-              >
-                Cancel
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              onClick={() => commitAll()}
-              disabled={pending}
-              className="flex-1"
-            >
-              {pending ? "Saving…" : "Save routine"}
-            </Button>
-          </div>
-        </div>
-      ) : null}
 
       <BellSchedule
         open={bellOpen}

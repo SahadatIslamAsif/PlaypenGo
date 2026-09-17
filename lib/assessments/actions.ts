@@ -15,58 +15,35 @@ async function currentUser() {
   return { supabase, userId: user.id };
 }
 
+export type SaveCTState = { error: string | null; assessmentId?: string };
+
 /**
- * §8: "Assign / edit CT date on any chapter, with postpone." One action for
- * both — creating the assessment the first time, updating its scheduled_date
- * every time after. Ordinary table writes, authorized by 0018's
- * is_owner_student(): a CT the student put on their own calendar.
+ * §8's "Schedule a CT" / postpone / rename, now subject-level rather than
+ * per-chapter (a CT stops belonging to one chapter once it can span
+ * several — 0017's assessment_chapters). Thin wrapper over save_ct() (0031),
+ * which does the insert-or-update plus set_assessment_chapters() atomically —
+ * the atomicity assignCTDate()'s old UPDATE branch never had, since it wrote
+ * scheduled_date directly and never touched chapter links at all.
  */
-export async function assignCTDate(input: {
-  studentId: string;
-  studentSubjectId: string;
-  chapterId: string;
-  assessmentId: string | null;
-  date: string;
-}): Promise<ActionState> {
-  const { supabase, userId } = await currentUser();
+export async function saveCT(
+  studentId: string,
+  entry: Record<string, unknown>,
+): Promise<SaveCTState> {
+  const { supabase } = await currentUser();
 
-  if (input.assessmentId) {
-    const { error } = await supabase
-      .from("assessments")
-      .update({ scheduled_date: input.date, status: "scheduled" })
-      .eq("id", input.assessmentId);
+  const { data, error } = await supabase.rpc("save_ct", {
+    p_student: studentId,
+    p_entry: entry as Json,
+  });
 
-    if (error) return { error: error.message };
-  } else {
-    // 0017: chapter_id no longer lives on assessments - insert the row, then
-    // link it to this chapter through the junction table, same as
-    // log_manual_result() does for a manually-entered result.
-    const { data, error } = await supabase
-      .from("assessments")
-      .insert({
-        student_id: input.studentId,
-        student_subject_id: input.studentSubjectId,
-        type: "CT",
-        status: "scheduled",
-        scheduled_date: input.date,
-        created_by: userId,
-      })
-      .select("id")
-      .single();
+  if (error) return { error: error.message };
 
-    if (error) return { error: error.message };
-
-    const { error: linkError } = await supabase.rpc("set_assessment_chapters", {
-      p_assessment: data.id,
-      p_chapters: [input.chapterId],
-    });
-
-    if (linkError) return { error: linkError.message };
-  }
+  const result = (data ?? {}) as { assessment_id?: string };
 
   revalidatePath("/subjects");
+  revalidatePath("/results");
   revalidatePath("/");
-  return { error: null };
+  return { error: null, assessmentId: result.assessment_id };
 }
 
 /** §8's cancel path: sets status, leaves the row (and any history) in place. */

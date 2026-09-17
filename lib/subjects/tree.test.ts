@@ -8,8 +8,24 @@ import { buildSubjectTree } from "./tree";
 
 const subjects = [{ id: "phy", display_name: "Physics", teacher_name: null, sort_order: 0 }];
 const chapters = [
-  { id: "c1", student_subject_id: "phy", paper_id: null, name: "1.1", status: "p100", sort_order: 0 },
-  { id: "c2", student_subject_id: "phy", paper_id: null, name: "1.2", status: "not_started", sort_order: 1 },
+  {
+    id: "c1",
+    student_subject_id: "phy",
+    paper_id: null,
+    name: "1.1",
+    status: "p100",
+    sort_order: 0,
+    syllabus_removed_at: null,
+  },
+  {
+    id: "c2",
+    student_subject_id: "phy",
+    paper_id: null,
+    name: "1.2",
+    status: "not_started",
+    sort_order: 1,
+    syllabus_removed_at: null,
+  },
 ];
 
 describe("buildSubjectTree — CT dates", () => {
@@ -54,7 +70,15 @@ describe("buildSubjectTree — CT dates", () => {
   it("attaches CT dates to chapters under a paper too", () => {
     const papers = [{ id: "p1", student_subject_id: "phy", name: "Math D", sort_order: 0 }];
     const paperChapters = [
-      { id: "c3", student_subject_id: "phy", paper_id: "p1", name: "2.1", status: "p80", sort_order: 0 },
+      {
+        id: "c3",
+        student_subject_id: "phy",
+        paper_id: "p1",
+        name: "2.1",
+        status: "p80",
+        sort_order: 0,
+        syllabus_removed_at: null,
+      },
     ];
     const [subject] = buildSubjectTree(
       subjects,

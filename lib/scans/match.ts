@@ -34,13 +34,17 @@ export function namesMatch(parsedName: string, profileName: string): boolean {
 // option... never auto-match, never hide." The caller filters candidates to
 // the parsed subject before calling this — matching is on date alone here.
 
-export type CTCandidate = { id: string; scheduledDate: string };
+export type CTCandidate = { id: string; scheduledDate: string; name: string | null };
 
 export type CTAttachResult = {
-  /** Set only on an exact date match — the one case that auto-attaches. */
+  /** Set only on a single exact date match — the one case that auto-attaches. */
   matchId: string | null;
-  /** Every other open CT for the subject, offered as a selectable option —
-   * covers the postponed-CT case without guessing at it. */
+  /** Offered as a selectable option whenever there isn't exactly one exact
+   * match: every open CT for the subject when none matches the date (covers
+   * a postponement), or just the exact-date CTs themselves when more than
+   * one shares the date — subject-level scheduling makes that reachable, and
+   * picking one arbitrarily would silently attach to the wrong CT, so the
+   * review screen disambiguates by name instead. */
   options: CTCandidate[];
 };
 
@@ -48,9 +52,12 @@ export function findCTAttachment(
   candidates: CTCandidate[],
   occurredDate: string,
 ): CTAttachResult {
-  const exact = candidates.find((c) => c.scheduledDate === occurredDate);
-  if (exact) {
-    return { matchId: exact.id, options: [] };
+  const exact = candidates.filter((c) => c.scheduledDate === occurredDate);
+  if (exact.length === 1) {
+    return { matchId: exact[0].id, options: [] };
+  }
+  if (exact.length > 1) {
+    return { matchId: null, options: exact };
   }
   return { matchId: null, options: candidates };
 }

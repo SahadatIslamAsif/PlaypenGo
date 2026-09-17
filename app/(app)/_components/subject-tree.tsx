@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import type { SubjectNode } from "@/lib/subjects/tree";
 import { AddSubjectForm, type CatalogEntry } from "./add-subject-form";
+import { ImportSyllabusButton } from "./import-syllabus-button";
 import { SubjectCard } from "./subject-card";
 
 export function SubjectTree({
@@ -10,6 +11,7 @@ export function SubjectTree({
   studentId,
   today,
   ctDates,
+  ctCounts,
 }: {
   tree: SubjectNode[];
   editable: boolean;
@@ -17,6 +19,7 @@ export function SubjectTree({
   studentId: string;
   today: string;
   ctDates: Set<string>;
+  ctCounts: Map<string, number>;
 }) {
   if (tree.length === 0) {
     return (
@@ -28,7 +31,8 @@ export function SubjectTree({
             : "Your student hasn't added any subjects yet."}
         </p>
         {editable ? (
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col gap-3">
+            <ImportSyllabusButton />
             <AddSubjectForm catalog={catalog} />
           </div>
         ) : null}
@@ -46,9 +50,15 @@ export function SubjectTree({
           studentId={studentId}
           today={today}
           ctDates={ctDates}
+          ctCount={ctCounts.get(subject.id) ?? 0}
         />
       ))}
-      {editable ? <AddSubjectForm catalog={catalog} /> : null}
+      {editable ? (
+        <>
+          <ImportSyllabusButton />
+          <AddSubjectForm catalog={catalog} />
+        </>
+      ) : null}
     </div>
   );
 }

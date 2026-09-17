@@ -245,11 +245,17 @@ async function moveScanImages(
 export type AttachmentPreview = {
   assessmentId: string | null;
   matchedBy: "ct-date" | "cwm-chapter" | "cwm-oldest" | null;
-  /** CT only, and only when there was no exact-date match: every other open
-   * scheduled CT for this subject, offered so a postponed CT can still be
-   * picked by hand. "No fuzzy dates... never auto-match, never hide" (§5.3) -
-   * this is the "never hide" half; findCTAttachment always returns these,
-   * confirmScanJob just used to throw them away. */
+  /** CT only, and only set alongside `matchedBy === "ct-date"` - a candidate
+   * CT is identified by name now that subject-level scheduling can put more
+   * than one on the calendar, not by date alone. */
+  ctName: string | null;
+  /** CT only, and only when there wasn't exactly one exact-date match: every
+   * other open scheduled CT for this subject when none matches the date, or
+   * the exact-date CTs themselves when more than one shares it - either way
+   * offered so the right one can be picked by hand. "No fuzzy dates... never
+   * auto-match, never hide" (§5.3) - this is the "never hide" half;
+   * findCTAttachment always returns these, confirmScanJob just used to throw
+   * them away. */
   ctOptions: CTCandidate[];
 };
 
@@ -268,20 +274,24 @@ async function resolveAttachment(
   if (entry.type === "CT") {
     const { data: scheduled } = await supabase
       .from("assessments")
-      .select("id, scheduled_date")
+      .select("id, scheduled_date, name")
       .eq("student_id", userId)
       .eq("student_subject_id", entry.studentSubjectId)
       .eq("type", "CT")
       .eq("status", "scheduled");
 
     const candidates: CTCandidate[] = (scheduled ?? [])
-      .filter((a): a is { id: string; scheduled_date: string } => a.scheduled_date !== null)
-      .map((a) => ({ id: a.id, scheduledDate: a.scheduled_date }));
+      .filter(
+        (a): a is { id: string; scheduled_date: string; name: string | null } =>
+          a.scheduled_date !== null,
+      )
+      .map((a) => ({ id: a.id, scheduledDate: a.scheduled_date, name: a.name ?? null }));
 
     const result = findCTAttachment(candidates, entry.occurredDate);
     return {
       assessmentId: result.matchId,
       matchedBy: result.matchId ? "ct-date" : null,
+      ctName: result.matchId ? (candidates.find((c) => c.id === result.matchId)?.name ?? null) : null,
       ctOptions: result.options,
     };
   }
@@ -300,7 +310,7 @@ async function resolveAttachment(
     .is("window_closed_at", null);
 
   if (!windows || windows.length === 0) {
-    return { assessmentId: null, matchedBy: null, ctOptions: [] };
+    return { assessmentId: null, matchedBy: null, ctName: null, ctOptions: [] };
   }
 
   const { data: links } = await supabase
@@ -328,6 +338,7 @@ async function resolveAttachment(
   return {
     assessmentId: result.matchId,
     matchedBy: result.matchedBy === "chapter" ? "cwm-chapter" : result.matchedBy === "oldest" ? "cwm-oldest" : null,
+    ctName: null,
     ctOptions: [],
   };
 }

@@ -67,7 +67,7 @@ export function crosscheckRoutine(
     if (isBreakColumn(texts)) {
       warnings.push({
         kind: "break_column",
-        message: `Period ${column.period_no} looks like a break. Mark the column as a break so it isn't counted as a lesson.`,
+        message: `Period ${column.period_no} looks like a break. Type "Break" in its cells so it isn't counted as a lesson.`,
       });
     }
   });

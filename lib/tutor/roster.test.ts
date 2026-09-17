@@ -10,6 +10,7 @@ function item(partial: Partial<UpcomingItem>): UpcomingItem {
     subjectName: "Physics",
     assessmentId: "a1",
     chapterIds: [],
+    name: null,
     ...partial,
   };
 }

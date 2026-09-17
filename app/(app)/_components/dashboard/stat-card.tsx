@@ -2,7 +2,9 @@ import { ProgressRing } from "@/components/charts/progress-ring";
 import { formatConverted, formatRaw } from "@/lib/assessments/marks";
 
 // Design system: "tinted fill, circular progress ring on the left ..., small
-// muted date above a large label. Used for the three most recent results."
+// muted date above a large label." Shows the four most recent results — a
+// count picked to fill the 2x2 grid this wraps to on the desktop rail's
+// width, rather than leaving one tile's worth of empty space beside three.
 
 const TINTS = ["bg-tint-mint", "bg-tint-sage", "bg-tint-teal"] as const;
 

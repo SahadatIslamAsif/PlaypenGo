@@ -178,8 +178,11 @@ playpengo/
 │   │   ├── student/
 │   │   ├── guardian/
 │   │   └── tutor/
+│   ├── auth/confirm/             # verifies the signup confirmation email's token
 │   ├── api/
 │   │   ├── scan-jobs/[id]/parse/ # the Gemini call, maxDuration 60
+│   │   ├── routines/parse/       # routine photo → Gemini, maxDuration 60
+│   │   ├── syllabus/import/      # syllabus PDF → Gemini → commit_syllabus_tree
 │   │   └── cron/                 # nightly digest, bearer-protected
 │   ├── c/[token]/                # no-login confirmation page from an email
 │   ├── globals.css               # design tokens
@@ -189,7 +192,7 @@ playpengo/
 ├── components/
 │   ├── shell/                    # sidebar, bottom tabs, nav items
 │   ├── charts/                   # line chart, progress ring, sparkline
-│   └── ui/                       # card, button, field, input, select, sheet, skeleton
+│   └── ui/                       # card, button, field, input, password-input, select, sheet, skeleton
 │
 ├── lib/
 │   ├── scans/                    # the resolution layer — pure, unit-tested
@@ -213,17 +216,20 @@ playpengo/
 │   │   ├── send.ts               # Nodemailer transport
 │   │   └── templates.tsx         # student, guardian, tutor digests
 │   ├── routines/                 # subject resolution, schedule helpers
+│   │   └── parse/                # Gemini boundary, same shape as lib/scans/parse/
+│   ├── syllabus/parse/           # Gemini boundary for the syllabus PDF parse (§5.2)
 │   ├── subjects/                 # subject tree writes
 │   ├── tutor/roster.ts           # roster sort, unlogged-count-first
 │   ├── assessments/marks.ts      # the conversion above
 │   ├── images/compress.ts        # client-side compression
 │   ├── linking/actions.ts        # guardian and tutor link approval
-│   ├── auth/actions.ts           # login
+│   ├── auth/actions.ts           # sign-out, change-password
 │   └── supabase/                 # server and browser clients, generated types
 │
 ├── supabase/
 │   ├── migrations/               # every schema change, in order
 │   ├── tests/                    # pgTAP — policies, triggers, functions
+│   ├── templates/confirmation.html # branded signup-confirmation email (GoTrue)
 │   ├── seed.sql                  # local fixtures only, never production
 │   └── config.toml
 │

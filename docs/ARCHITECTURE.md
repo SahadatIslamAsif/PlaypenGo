@@ -60,6 +60,10 @@ The permission shape follows directly from what each role is *for*, not from a g
 
 No account is ever seeded directly into the database. Every role goes through a real signup page, so the RLS policies are exercised by the same path production traffic uses, not bypassed for convenience.
 
+Every signup requires confirming the account's email before it can sign in — Supabase's own GoTrue send, not the digest system below, and on its own hand-inlined HTML template rather than react-email (§2). The confirmation link is a `token_hash` your own server verifies (`app/auth/confirm/route.ts`), the same shape as §7.6's one-tap links, so a session is established through this app's own cookies rather than through a redirect GoTrue constructs itself.
+
+Changing a password, for any of the three roles, is an authenticated account action, not a role-scoped one — it sits in Settings alongside whichever role-specific content lives there, and carries none of the RLS distinctions above, since every role can freely change its own password.
+
 ---
 
 ## 2. Stack
@@ -71,7 +75,7 @@ No account is ever seeded directly into the database. Every role goes through a 
 | Theme | `next-themes`, light/dark toggle | |
 | DB / Auth / Storage | Supabase (Postgres + Auth + Storage + RLS) | Never Firebase. |
 | AI parsing | Gemini Flash via `@google/genai` | Always structured output with an explicit response schema — never "return ONLY JSON" text parsing, which silently breaks the moment the model adds a stray sentence. |
-| Email | Nodemailer over SMTP | Templates via `react-email`, inline styles only — Tailwind classes do not survive email clients. |
+| Email | Nodemailer over SMTP | Templates via `react-email`, inline styles only — Tailwind classes do not survive email clients. Signup's own confirmation email is a separate path: Supabase GoTrue sending its own hand-inlined HTML template (`supabase/templates/confirmation.html`), not this Nodemailer/react-email pipeline and not subject to §7's one-a-day digest guard. |
 | Hosting | Vercel (Hobby) | |
 | Scheduling | External cron hitting a bearer-protected route | Vercel Hobby's own cron is once a day, UTC only, and fires anywhere within the hour — an external scheduler hitting the same route is the primary path, with the platform cron kept only as a backup. |
 
@@ -189,6 +193,10 @@ assessments
   created_by          uuid
   window_closed_at    timestamptz null
   window_close_reason text null   -- see §7.3/§7.5's five reasons
+  name                text null   -- scheduled-test kind only, e.g. "Test 2"; a student-chosen
+                                   -- label, never joined on — a subject that splits into two
+                                   -- papers (§10) shares one row here, so the same name can
+                                   -- legitimately occur twice under one subject
 
 results
   assessment_id       uuid unique
@@ -288,14 +296,14 @@ The catalogue is the canonical spine; `student_subjects.display_name` preserves 
 
 Many schools issue one document per class per term listing every subject and its chapters. Uploading it once populates the entire tree for a student — the single biggest reduction in manual setup effort when a student is taking a dozen or more subjects.
 
-Flow: upload the document → the model parses it (§5.2) → an editable review tree → confirm → the tree is written.
+Flow: upload the document → the model parses it (§5.2) → `commit_syllabus_tree` writes the tree straight to the database. No review screen — §5.2 explains why the syllabus parse is the one exception to §5's human-review rule, and what that exception makes load-bearing instead.
 
 **Real messiness a parser like this has to survive**, illustrated with invented examples in the same shape as what actually shows up in these documents:
 
 - Subjects that split into papers: a subject called "Mathematics" splitting into *Math D* and *Add Math*; a language subject splitting into *Paper 1* and *Paper 2*.
 - Chapters given as a bare range with no names at all: "Chapters: 1–5" for a subject → generate five placeholder chapters the student can rename later, rather than refusing to import the subject.
-- Compound entries that name several chapters at once, e.g. "Chapter 2, 6, 8 – mixed algebra topics" → treat as one chapter and keep the original string verbatim; do not try to split it into three.
-- Decimal sub-topic numbering, e.g. "3.1: Levers and Pulleys" → one chapter, exactly as printed.
+- Compound entries that name several chapters at once split into one chapter per unit — "Nouns, Verbs, Adjectives" becomes three chapters, not one — because a CT can cover part of a compound line, and there is no way to record that scope without a row per unit. The one comma pattern that stays whole is a bare numeric run: "Chapter 2, 6, 8 – mixed algebra topics" is still one chapter, since nothing there names distinct topics to split on.
+- Decimal sub-topic numbering is stripped once real words follow it: "3.1: Levers and Pulleys" imports as "Levers and Pulleys". The numeral is kept only when stripping it would leave nothing behind.
 - Non-Latin script chapters (a second-language subject taught in its own script) → preserved exactly, never transliterated.
 - Free-text caveats printed alongside a subject, e.g. "Limited to specific topics taught in class" → ignored; this is a note, not a chapter.
 
@@ -305,7 +313,7 @@ Every import is scoped to a session label and semester, so the next term's uploa
 
 ## 5. Gemini pipelines
 
-Three separate prompts, each with an explicit structured-output schema and a per-field confidence score. Nothing from any of them reaches the database without passing through a human review screen first — every extracted field stays editable.
+Three separate prompts, each with an explicit structured-output schema and a per-field confidence score. Two of the three — routine parse and exam paper parse — never reach the database without passing through a human review screen first, every extracted field staying editable. The third, the syllabus parse, is the deliberate exception; §5.2 explains why.
 
 ### 5.1 Routine parse
 
@@ -333,7 +341,7 @@ Response schema:
 1. **A break column can spell a word vertically down the days of the week** — one letter per day. Any single-letter cell, or a column whose cells concatenate into a recognizable word, is a break, not a subject.
 2. **Named non-academic periods** — assembly, games, library, and similar — are flagged non-academic the same way a break is.
 3. **A teacher's name typically sits below the subject** in each cell; capture it as useful context and a future prediction signal, not as noise to discard.
-4. **Normalise teacher name spelling within one routine.** The same teacher can appear with two different spellings on different days of the same printed grid — fuzzy-match names within a single routine and flag near-duplicates for review rather than silently creating two teachers.
+4. **Normalise teacher name spelling within one routine — but not inside the prompt.** The same teacher can appear with two different spellings on different days of the same printed grid, and the fix is fuzzy-matching names within a single routine and flagging near-duplicates for review rather than silently creating two teachers — done in TypeScript after the parse, not asked of the model. The model is told the opposite: transcribe each cell's spelling exactly as printed, even when it notices the same teacher spelled two ways, because a deterministic, testable fuzzy-match downstream needs verbatim transcriptions to compare, and a model asked to "normalise" would be silently deciding which spelling is canonical with no way to review or correct that choice.
 5. **A subject that splits into papers is never distinguished by the routine.** Both papers are taught in the same periods by the same teacher; paper selection happens later, when a result is actually logged.
 6. Days run Sunday through Thursday. Friday and Saturday are the weekend and never appear.
 
@@ -352,18 +360,32 @@ Response schema:
   "semester": "First",
   "subjects": [
     {"name":"Business Studies","papers":[],
-     "chapters":["1.1: Introduction to Enterprise","1.2: Business Objectives"]},
+     "chapters":["Introduction to Enterprise","Business Objectives"]},
     {"name":"Mathematics",
      "papers":[
-       {"name":"Math D","chapters":["Chapter 1 – Number Systems"]},
-       {"name":"Add Math","chapters":["Chapter 2 – Simultaneous Equations"]}
+       {"name":"Math D","chapters":["Number Systems"]},
+       {"name":"Add Math","chapters":["Simultaneous Equations"]}
      ],
      "chapters":[]}
   ]
 }
 ```
 
-Preserve original chapter strings verbatim. Do not normalise, renumber, or translate.
+Split to the finest unit the document offers — one chapter per named item, never a whole compound line reported as one string — and strip leading markers (bullets, dots, chapter/unit numbering, decimal sub-topic numbers) once real words follow them; keep a numeral only when stripping it would leave nothing behind. Beyond that splitting and stripping, preserve each resulting chapter string verbatim — never normalise, renumber, or translate it further.
+
+This is a deliberate reversal from §5.3's exam-paper chapter matching, which never splits a topic line at all (`inferred_chapter` there is chosen from the student's already-seeded chapters, not generated fresh). The two are different problems: §5.3 is matching a scanned paper's topic line against an existing list, where the list is already whatever granularity the import gave it and over-splitting there would just create near-misses with nothing to match against. §5.2 is producing that list in the first place, where under-splitting permanently loses scope a CT might need and over-splitting is cheaply recoverable — a rename or delete on the subjects screen, the correction path §5.2's own review-skip already relies on (below).
+
+#### Why this parse skips the review screen
+
+`commit_syllabus_tree` (§3.2, §4.2) writes the parsed tree straight into `student_subjects` / `subject_papers` / `chapters` — no review-and-confirm step between the model and the database, unlike every other AI-written field in this app.
+
+The distinction is what happens to the value after it lands, not how it got there. A chapter name is a label the student comes back to every week, on the subjects screen, to move it through `0 / 80 / 100`. A parse mistake — a garbled decimal number, a compound entry split wrong, an accent transliterated when it shouldn't have been — sits directly in the control the student already has to touch to log any progress at all. Wrong or missing surfaces in normal use, caught by the one person who actually knows the syllabus, within the first week of the term.
+
+A mark is a different shape of value: written once by `results.logged_at`, read forever after — on the chart, in the guardian's digest, in the semester reconciliation table. Nobody revisits a mark the way a chapter gets revisited; there is no later screen whose ordinary use would catch an OCR slip on a raw score, which is exactly why §5.3 keeps a verification modal in the way of every one of them. The two parses fail differently, so they're guarded differently.
+
+What this makes load-bearing instead: chapter editing on the subjects screen — add, rename, delete, at both subject level and paper level — has to be as solid as a review screen would have been, because it's now the only correction path a bad syllabus parse ever gets. That correction has to survive a repeat commit, too — a corrected re-upload of this term's syllabus, say — and `chapters` (0029) is built so it does: `parsed_name` is set once, at first commit, and never written again, while `name` is the mutable value the rename affordance edits. `commit_syllabus_tree`'s upsert matches on `parsed_name`, not `name`, so a rename is never reverted by a later re-import, and — because matching stays content-based rather than positional — an insertion, deletion, or reordering elsewhere in the same re-upload doesn't cascade into mismatching every chapter after it. A chapter whose `parsed_name` no longer appears in a re-import is, by default, flagged (`syllabus_removed_at`), not deleted: the row can carry an open CWM window or logged progress, and a silent automated delete is exactly the kind of thing this section just finished arguing a chapter should never suffer. The flag clears if a later commit brings the chapter back; otherwise the existing delete affordance is how a human removes it for good.
+
+That default has one narrow exception, needed once the splitting/stripping rules above shipped: re-parsing the *same* document under improved rules routinely turns an old chapter string into a new one — a decimal-prefixed name that now has its numeral stripped, say — which a flag-only policy would leave behind as a flagged husk sitting next to its own live replacement, pure parser noise with nothing for a human to act on. So a chapter is deleted outright, instead of flagged, only when every one of these holds: it came from the syllabus parser (never a hand-added or carried-over row), it is still `not_started` (a chapter already moved to `not_taught` or further is a deliberate action and must survive), its `name` was never edited away from its original `parsed_name` (a renamed chapter is a human decision and is never silently removed), and no scheduled test has been scoped to it. Anything absent that fails even one of those conditions still gets the flag, never a delete. This flagging (and the narrower deleting) pass is scoped to chapters only — a re-import that drops an entire subject or paper leaves that subject's/paper's own chapters untouched by either.
 
 ### 5.3 Exam paper parse
 
@@ -693,7 +715,7 @@ The tutor does not log papers. The dashboard's job is **noticing what the studen
 
 **Phase 1 — Foundation.** Next.js + Tailwind + theme. Supabase project, full schema, RLS policies **with tests**. Signup/login for all three roles. Family-code linking and tutor approval.
 
-**Phase 2 — The tree.** Subject catalogue seed. Syllabus PDF upload → parse → review → commit. Subject/paper/chapter UI with progress toggles and `Not taught`.
+**Phase 2 — The tree.** Subject catalogue seed. Syllabus PDF upload → parse → `commit_syllabus_tree` writes straight through, no review step (§5.2). Subject/paper/chapter UI with progress toggles and `Not taught`, plus solid add/rename/delete on chapters at both subject and paper level — that editing is the correction path a skipped review screen would otherwise have been.
 
 **Phase 3 — Routine.** Photo upload → parse → editable grid → commit. Alias capture on correction. Syllabus cross-check warnings.
 
@@ -819,7 +841,7 @@ Scan sits centre as a raised `--ink` circle overlapping the bar, **on the studen
 **Tables become cards.** The tutor roster is one card per student: name, tomorrow's load, unlogged count, trend arrow. The unlogged count is the point of the screen — the tutor's job here is noticing what the student hasn't logged, not logging it himself. No horizontal scrolling of table rows, ever.
 
 **Scan flow, phone-first:**
-- Capture straight from the camera, not a file picker.
+- Capture straight from the camera — a live `getUserMedia` preview by default, since the `capture="environment"` file-input hint is inconsistently honoured on iOS Safari; that hint (`accept="image/*"` with `capture="environment"`) is the fallback only when `getUserMedia` is unavailable or refused. Never a plain file picker with no camera hint at all.
 - Multi-page is capture → thumbnail strip → *Add page* → *Done*. Pages stay in capture order; that order is what groups them, so the strip carries a *same paper / new paper* toggle.
 - A parse in review lives in `scan_jobs`, not React state. Launching the camera can evict the tab; the review screen must be resumable.
 - The review screen cannot be side-by-side. Thumbnail strip pinned at the top (tap to open full-screen zoom), fields scrolling beneath, a sticky *Save result* bar at the bottom that stays above the keyboard.

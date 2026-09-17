@@ -15,6 +15,9 @@ export type ChapterNode = {
   sort_order: number;
   /** The chapter's CT assessment, if one has been assigned (§8). */
   ct: ChapterCT | null;
+  /** Set by commit_syllabus_tree (0029) when a re-import's parsed_name no
+   *  longer covers this chapter - flagged, not deleted, until a human acts. */
+  syllabus_removed_at: string | null;
 };
 
 export type PaperNode = {
@@ -54,6 +57,7 @@ type ChapterRow = {
   name: string;
   status: string;
   sort_order: number;
+  syllabus_removed_at: string | null;
 };
 
 export type CTAssessmentRow = {
@@ -134,6 +138,7 @@ function toChapterNode(
     name: chapter.name,
     status: chapter.status as ChapterStatus,
     sort_order: chapter.sort_order,
+    syllabus_removed_at: chapter.syllabus_removed_at,
     ct: ct
       ? {
           assessmentId: ct.id,

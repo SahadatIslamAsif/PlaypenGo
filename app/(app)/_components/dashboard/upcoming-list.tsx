@@ -30,7 +30,8 @@ export function UpcomingList({ items, today }: { items: UpcomingItem[]; today: s
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-ink">{item.subjectName}</p>
             <p className="text-xs text-muted">
-              {item.kind === "scheduled_ct" ? "CT" : "CWM likely"} · {relativeLabel(item.date, today)}
+              {item.kind === "scheduled_ct" ? (item.name ?? "CT") : "CWM likely"} ·{" "}
+              {relativeLabel(item.date, today)}
             </p>
           </div>
         </li>

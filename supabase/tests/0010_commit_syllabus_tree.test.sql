@@ -152,7 +152,7 @@ select tests.login_as(tests.uid('tutor'));
 
 select is(
   public.commit_syllabus_tree(tests.uid('student_a'), tests.syllabus_tree_v1(), 'Term 1'),
-  jsonb_build_object('subjects_committed', 2, 'papers_committed', 2, 'chapters_committed', 4),
+  jsonb_build_object('subjects_committed', 2, 'papers_committed', 2, 'chapters_committed', 4, 'chapters_deleted', 0, 'chapters_flagged', 0),
   'the tutor commits student A''s tree and gets back the right counts'
 );
 
@@ -192,7 +192,7 @@ select tests.login_as(tests.uid('student_a'));
 
 select is(
   public.commit_syllabus_tree(tests.uid('student_a'), tests.syllabus_tree_v1(), 'Term 1'),
-  jsonb_build_object('subjects_committed', 2, 'papers_committed', 2, 'chapters_committed', 4),
+  jsonb_build_object('subjects_committed', 2, 'papers_committed', 2, 'chapters_committed', 4, 'chapters_deleted', 0, 'chapters_flagged', 0),
   'student A can also commit their own tree, and the counts are unchanged'
 );
 
@@ -220,7 +220,7 @@ select tests.login_as(tests.uid('tutor'));
 -- than the one that logged the progress tap.
 select is(
   public.commit_syllabus_tree(tests.uid('student_a'), tests.syllabus_tree_v1(), 'Term 1'),
-  jsonb_build_object('subjects_committed', 2, 'papers_committed', 2, 'chapters_committed', 4),
+  jsonb_build_object('subjects_committed', 2, 'papers_committed', 2, 'chapters_committed', 4, 'chapters_deleted', 0, 'chapters_flagged', 0),
   'the tutor''s repeat commit succeeds too'
 );
 
@@ -246,7 +246,7 @@ select is(
      ]}'::jsonb,
     'Term 2'
   ),
-  jsonb_build_object('subjects_committed', 1, 'papers_committed', 1, 'chapters_committed', 1),
+  jsonb_build_object('subjects_committed', 1, 'papers_committed', 1, 'chapters_committed', 1, 'chapters_deleted', 0, 'chapters_flagged', 0),
   'a Term 2 commit against the same Mathematics subject succeeds'
 );
 

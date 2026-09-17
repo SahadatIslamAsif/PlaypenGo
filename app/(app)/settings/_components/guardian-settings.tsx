@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { createClient } from "@/lib/supabase/server";
+import { ChangePasswordForm } from "./change-password-form";
 import { RedeemCodeForm } from "./redeem-code-form";
 
 export async function GuardianSettings({ userId }: { userId: string }) {
@@ -36,6 +37,8 @@ export async function GuardianSettings({ userId }: { userId: string }) {
         description="Enter the family code your student shared with you."
         placeholder="Family code"
       />
+
+      <ChangePasswordForm />
     </div>
   );
 }

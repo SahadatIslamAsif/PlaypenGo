@@ -15,7 +15,14 @@ const PUBLIC_PATHS = ["/login", "/signup"];
 // available: a guardian who happens to still have a session on their phone taps
 // Yes in their email and gets silently redirected to the dashboard, their answer
 // never recorded and nothing on screen explaining why.
-const OPEN_PATHS = ["/c"];
+//
+// /auth is the parallel case for the *signup* confirmation link
+// (app/auth/confirm/route.ts): the person clicking it is signed out by
+// definition, and PUBLIC_PATHS' redirect only fires for a signed-in visitor
+// anyway, but it belongs here rather than there since a signed-in visitor
+// re-clicking a stale confirmation link shouldn't get bounced home either —
+// the route handler itself decides success vs. /auth/auth-code-error.
+const OPEN_PATHS = ["/c", "/auth"];
 
 function matchesPath(paths: string[], pathname: string) {
   return paths.some(

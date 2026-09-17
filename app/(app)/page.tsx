@@ -27,6 +27,8 @@ export default async function HomePage({
     .eq("id", user.id)
     .single();
 
+  const viewerRole = (profile?.role as "student" | "guardian" | "tutor" | undefined) ?? "student";
+
   const { student } = await searchParams;
   const studentId = await resolveViewedStudentId(supabase, user.id, profile?.role, student);
 
@@ -145,11 +147,14 @@ export default async function HomePage({
   return (
     <DashboardScreen
       studentName={studentProfile?.full_name ?? null}
+      viewerName={profile?.full_name ?? null}
+      viewerRole={viewerRole}
       statCards={statCards}
       series={series}
       upcoming={upcoming}
       today={today}
       todaysPeriods={todaysGridPeriods}
+      routinePeriods={routinePeriodRows}
       subjectNames={subjectNames}
       ctDates={ctDates}
     />

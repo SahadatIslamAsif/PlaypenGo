@@ -12,6 +12,11 @@ export type AssessmentRow = {
   status: string;
   scheduled_date: string | null;
   occurred_date: string | null;
+  /** 0031, CT-only. `name ?? "CT"` is how every surface names a CT now that
+   *  the CT section lists them flat across every subject (§8). Optional —
+   *  reconciliation.ts, weak-chapters.ts and series.ts never display a CT's
+   *  name, and their fixtures predate this column. */
+  name?: string | null;
 };
 
 // 0017: an assessment can cover several chapters (a CT often spans 2-3 in one
@@ -49,6 +54,8 @@ export type ResultListItem = {
   paperName: string | null;
   chapterNames: string[];
   type: AssessmentType;
+  /** 0031, CT-only - `name ?? "CT"` at render time, same as everywhere else. */
+  name: string | null;
   date: string;
   rawObtained: number;
   rawTotal: number;
@@ -116,6 +123,7 @@ export function buildResultsList(
         .map((id) => chapterById.get(id)?.name)
         .filter((name): name is string => name !== undefined),
       type: assessment.type,
+      name: assessment.name ?? null,
       date: assessment.occurred_date ?? assessment.scheduled_date ?? result.logged_at.slice(0, 10),
       rawObtained: result.raw_obtained,
       rawTotal: result.raw_total,
@@ -128,6 +136,63 @@ export function buildResultsList(
   }
 
   return items.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export type ScheduledCTItem = {
+  assessmentId: string;
+  subjectId: string;
+  subjectName: string;
+  paperName: string | null;
+  chapterIds: string[];
+  chapterNames: string[];
+  /** 0031 - `name ?? "CT"` at render time. */
+  name: string | null;
+  scheduledDate: string;
+};
+
+/**
+ * A scheduled-but-unlogged CT never reaches buildResultsList() above (it
+ * loops `results`, so an assessment with no result row never appears) - this
+ * is Results' CT section's other source, the same predicate
+ * lib/assessments/upcoming.ts's scheduledCTs() already uses, joined the same
+ * way buildResultsList() joins subject/paper/chapter names.
+ */
+export function buildScheduledCTList(
+  assessments: AssessmentRow[],
+  subjects: SubjectRow[],
+  papers: PaperRow[],
+  chapters: ChapterRow[],
+  assessmentChapters: AssessmentChapterRow[] = [],
+): ScheduledCTItem[] {
+  const subjectById = new Map(subjects.map((s) => [s.id, s]));
+  const paperById = new Map(papers.map((p) => [p.id, p]));
+  const chapterById = new Map(chapters.map((c) => [c.id, c]));
+
+  const chapterIdsByAssessment = new Map<string, string[]>();
+  for (const link of assessmentChapters) {
+    const list = chapterIdsByAssessment.get(link.assessment_id) ?? [];
+    list.push(link.chapter_id);
+    chapterIdsByAssessment.set(link.assessment_id, list);
+  }
+
+  return assessments
+    .filter((a) => a.type === "CT" && a.status === "scheduled" && a.scheduled_date)
+    .map((a) => {
+      const chapterIds = chapterIdsByAssessment.get(a.id) ?? [];
+      return {
+        assessmentId: a.id,
+        subjectId: a.student_subject_id,
+        subjectName: subjectById.get(a.student_subject_id)?.display_name ?? "Unknown subject",
+        paperName: a.paper_id ? (paperById.get(a.paper_id)?.name ?? null) : null,
+        chapterIds,
+        chapterNames: chapterIds
+          .map((id) => chapterById.get(id)?.name)
+          .filter((name): name is string => name !== undefined),
+        name: a.name ?? null,
+        scheduledDate: a.scheduled_date as string,
+      };
+    })
+    .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
 }
 
 export function filterBySubject(

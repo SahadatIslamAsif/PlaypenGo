@@ -128,7 +128,7 @@ export function StudentDigestEmail({
           {digest.unlogged.map((u, i) => (
             <Section key={`${u.subject}-${i}`} style={style.entry}>
               <Text style={style.entryTitle}>
-                {`${u.subject} ${u.type}`}
+                {`${u.subject} ${u.type === "CT" ? (u.name ?? "CT") : u.type}`}
               </Text>
               <Text style={style.entryMeta}>
                 {`${shortDate(u.occurredDate)} · waiting ${u.daysWaiting} ${u.daysWaiting === 1 ? "day" : "days"}`}
@@ -220,7 +220,7 @@ export function GuardianDigestEmail({
           {digest.unlogged.map((u, i) => (
             <Section key={`${u.subject}-${i}`} style={style.entry}>
               <Text style={style.entryTitle}>
-                {`${u.subject} ${u.type}`}
+                {`${u.subject} ${u.type === "CT" ? (u.name ?? "CT") : u.type}`}
               </Text>
               {/* "Taken", not "Sat" — the short date already begins with a
                   weekday, and "Sat Tue 25 Aug" reads as a contradiction. */}

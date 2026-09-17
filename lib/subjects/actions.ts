@@ -103,6 +103,29 @@ export async function addChapter(
   return { error: null };
 }
 
+// §5.2's correction path: chapters can be renamed in place, not just added
+// or deleted. Nothing about the underlying row's identity changes on a
+// rename (0029 keys the syllabus-commit unique index on syllabus_seq, not
+// name), so this is a plain per-row UPDATE — the same policy addChapter and
+// deleteChapter already rely on.
+export async function renameChapter(chapterId: string, name: string): Promise<ActionState> {
+  const { supabase } = await currentUser();
+  const trimmed = name.trim();
+
+  if (!trimmed) {
+    return { error: "Enter a chapter name." };
+  }
+
+  const { error } = await supabase.from("chapters").update({ name: trimmed }).eq("id", chapterId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/subjects");
+  return { error: null };
+}
+
 export async function updateChapterStatus(chapterId: string, status: string) {
   const { supabase } = await currentUser();
 

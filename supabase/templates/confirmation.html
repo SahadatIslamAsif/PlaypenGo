@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm your email</title>
+  </head>
+  <!--
+    Hand-inlined rather than rendered via react-email: GoTrue's auth emails
+    are plain Go-template HTML (supabase/config.toml's
+    auth.email.template.confirmation), a different pipeline from the
+    Nodemailer + react-email digest in lib/email. The colors below are copied
+    from lib/email/theme.ts by value, not import, since this file can't reach
+    TypeScript — keep the two in sync by hand if the palette ever changes.
+
+    No <img> logo, matching lib/email/theme.ts's own reasoning: an <img> in
+    email is blocked by default in most clients, so the PlaypenGo wordmark
+    carries the brand in type alone, the same as every digest template.
+  -->
+  <body
+    style="margin:0;padding:0;background-color:#EDF8F1;font-family:'Inter','Segoe UI',Roboto,-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;line-height:1.55;color:#3B4A42;"
+  >
+    <div style="max-width:600px;margin:0 auto;padding:24px 12px 40px;">
+      <h1
+        style="font-family:'Outfit','Segoe UI',Roboto,-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:600;color:#0E1A14;margin:0 0 20px;"
+      >
+        PlaypenGo
+      </h1>
+      <div style="background-color:#FFFFFF;border-radius:20px;padding:20px;border:1px solid #E6EFE9;">
+        <p style="font-size:15px;color:#3B4A42;margin:0 0 12px;">Hi {{ .Data.full_name }},</p>
+        <p style="font-size:15px;color:#3B4A42;margin:0 0 20px;">
+          You're creating a PlaypenGo account as a
+          <strong style="color:#0E1A14;">{{ .Data.role }}</strong>. Confirm your email to finish
+          setting it up.
+        </p>
+        <a
+          href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/"
+          style="display:inline-block;background-color:#0E1A14;color:#FFFFFF;font-size:14px;font-weight:600;text-decoration:none;padding:11px 18px;border-radius:12px;"
+        >
+          Confirm email
+        </a>
+        <p style="font-size:12px;color:#8A9A92;margin:20px 0 0;">
+          If you didn't create this account, you can ignore this email.
+        </p>
+      </div>
+      <p style="font-size:12px;color:#8A9A92;text-align:center;margin:24px 0 0;">
+        PlaypenGo — a running record of assessments the school portal publishes at semester end.
+      </p>
+    </div>
+  </body>
+</html>

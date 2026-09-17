@@ -1,12 +1,13 @@
 "use client";
 
-import { ChevronDown, Trash2 } from "lucide-react";
+import { CalendarClock, ChevronDown, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { deleteSubject, deletePaper } from "@/lib/subjects/actions";
 import type { SubjectNode } from "@/lib/subjects/tree";
 import { AddChapterInline } from "./add-chapter-inline";
 import { AddPaperInline } from "./add-paper-inline";
 import { ChapterRow } from "./chapter-row";
+import { ScheduleCTSheet } from "./schedule-ct-sheet";
 
 export function SubjectCard({
   subject,
@@ -14,14 +15,17 @@ export function SubjectCard({
   studentId,
   today,
   ctDates,
+  ctCount,
 }: {
   subject: SubjectNode;
   editable: boolean;
   studentId: string;
   today: string;
   ctDates: Set<string>;
+  ctCount: number;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   const totalChapters =
     subject.chapters.length + subject.papers.reduce((n, p) => n + p.chapters.length, 0);
 
@@ -50,15 +54,7 @@ export function SubjectCard({
           {subject.chapters.length || (subject.papers.length === 0 && editable) ? (
             <div className="divide-y divide-hairline">
               {subject.chapters.map((chapter) => (
-                <ChapterRow
-                  key={chapter.id}
-                  chapter={chapter}
-                  editable={editable}
-                  studentId={studentId}
-                  studentSubjectId={subject.id}
-                  today={today}
-                  ctDates={ctDates}
-                />
+                <ChapterRow key={chapter.id} chapter={chapter} editable={editable} />
               ))}
             </div>
           ) : null}
@@ -75,15 +71,7 @@ export function SubjectCard({
               </div>
               <div className="divide-y divide-hairline">
                 {paper.chapters.map((chapter) => (
-                  <ChapterRow
-                    key={chapter.id}
-                    chapter={chapter}
-                    editable={editable}
-                    studentId={studentId}
-                    studentSubjectId={subject.id}
-                    today={today}
-                    ctDates={ctDates}
-                  />
+                  <ChapterRow key={chapter.id} chapter={chapter} editable={editable} />
                 ))}
               </div>
               {editable ? (
@@ -93,12 +81,43 @@ export function SubjectCard({
           ))}
 
           {editable ? (
-            <div className="mt-2 flex items-center justify-between border-t border-hairline pt-2">
-              <AddPaperInline studentSubjectId={subject.id} />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-2">
+              <div className="flex items-center gap-2">
+                <AddPaperInline studentSubjectId={subject.id} />
+                <button
+                  type="button"
+                  onClick={() => setScheduling(true)}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-pill border border-hairline bg-surface px-3 text-xs font-medium text-muted transition-colors hover:text-ink"
+                >
+                  <CalendarClock className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Schedule a CT
+                </button>
+              </div>
               <DeleteSubjectButton subjectId={subject.id} />
             </div>
           ) : null}
         </div>
+      ) : null}
+
+      {editable ? (
+        <ScheduleCTSheet
+          key={scheduling ? "open" : "closed"}
+          open={scheduling}
+          onClose={() => setScheduling(false)}
+          studentId={studentId}
+          subjectId={subject.id}
+          subjectName={subject.display_name}
+          chapters={[
+            ...subject.chapters.map((c) => ({ id: c.id, name: c.name, paperId: null })),
+            ...subject.papers.flatMap((p) =>
+              p.chapters.map((c) => ({ id: c.id, name: c.name, paperId: p.id })),
+            ),
+          ]}
+          papers={subject.papers.map((p) => ({ id: p.id, name: p.name }))}
+          defaultName={`CT ${ctCount + 1}`}
+          today={today}
+          ctDates={ctDates}
+        />
       ) : null}
     </div>
   );

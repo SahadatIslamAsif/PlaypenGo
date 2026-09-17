@@ -70,7 +70,7 @@ export default async function TutorStudentPage({
     supabase.from("chapters").select("id, student_subject_id, status, name").eq("student_id", studentId),
     supabase
       .from("assessments")
-      .select("id, student_subject_id, paper_id, type, status, scheduled_date, occurred_date")
+      .select("id, student_subject_id, paper_id, type, status, scheduled_date, occurred_date, name")
       .eq("student_id", studentId),
     supabase
       .from("results")
@@ -127,6 +127,7 @@ export default async function TutorStudentPage({
     subjectName: subjectNames.get(a.student_subject_id) ?? "That subject",
     type: a.type,
     date: a.occurred_date ?? a.scheduled_date,
+    name: a.type === "CT" ? (a.name ?? null) : null,
   }));
 
   const chaptersReady = chapterRows.filter(
@@ -207,9 +208,15 @@ export default async function TutorStudentPage({
           <p className="mt-1 text-sm text-muted">Nothing due tomorrow.</p>
         ) : (
           <div className="mt-2 flex flex-col gap-1.5">
-            {tomorrow.map((item) => (
-              <p key={`${item.subjectId}-${item.kind}`} className="text-sm text-body">
-                {item.subjectName} <span className="text-xs text-muted">· {item.kind === "scheduled_ct" ? "CT" : "CWM (predicted)"}</span>
+            {tomorrow.map((item, i) => (
+              <p
+                key={`${item.assessmentId ?? item.chapterIds.join(",")}-${item.kind}-${i}`}
+                className="text-sm text-body"
+              >
+                {item.subjectName}{" "}
+                <span className="text-xs text-muted">
+                  · {item.kind === "scheduled_ct" ? (item.name ?? "CT") : "CWM (predicted)"}
+                </span>
               </p>
             ))}
           </div>
@@ -226,7 +233,11 @@ export default async function TutorStudentPage({
           <div className="mt-2 flex flex-col gap-1.5">
             {unloggedItems.map((item) => (
               <p key={item.id} className="text-sm text-body">
-                {item.subjectName} <span className="text-xs text-muted">· {item.type}{item.date ? ` · ${item.date}` : ""}</span>
+                {item.subjectName}{" "}
+                <span className="text-xs text-muted">
+                  · {item.type === "CT" ? (item.name ?? "CT") : item.type}
+                  {item.date ? ` · ${item.date}` : ""}
+                </span>
               </p>
             ))}
           </div>

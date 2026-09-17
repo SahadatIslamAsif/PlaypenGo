@@ -32,7 +32,7 @@ const HOME: NavItem = { href: "/", label: "Home", icon: Home };
 const SUBJECTS: NavItem = { href: "/subjects", label: "Subjects", icon: BookOpen };
 const RESULTS: NavItem = { href: "/results", label: "Results", icon: LineChart };
 const ROUTINE: NavItem = { href: "/routine", label: "Routine", icon: CalendarClock };
-const SETTINGS: NavItem = { href: "/settings", label: "Settings", icon: Settings };
+export const SETTINGS: NavItem = { href: "/settings", label: "Settings", icon: Settings };
 // Phase 7's roster - CLAUDE.md's tutor bar is literally "Students · Results
 // · More", and this is that first item. Distinct from HOME: a tutor has no
 // personal dashboard, so their first destination is the student list, not a

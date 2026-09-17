@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { ResultsScreen } from "./_components/results-screen";
-import { buildResultsList, type ResultImageRow } from "@/lib/assessments/list";
+import { buildResultsList, buildScheduledCTList, type ResultImageRow } from "@/lib/assessments/list";
 import { toWeeklySeries } from "@/lib/assessments/series";
 import { localDate } from "@/lib/routines/schedule";
 import { signScriptImage } from "@/lib/scans/storage";
@@ -77,7 +77,7 @@ export default async function ResultsPage({
       .order("sort_order"),
     supabase
       .from("assessments")
-      .select("id, student_subject_id, paper_id, type, status, scheduled_date, occurred_date")
+      .select("id, student_subject_id, paper_id, type, status, scheduled_date, occurred_date, name")
       .eq("student_id", studentId),
     supabase
       .from("results")
@@ -127,6 +127,13 @@ export default async function ResultsPage({
     assessmentChapterRows,
     resultImages,
   );
+  const scheduledCTs = buildScheduledCTList(
+    assessmentRows,
+    subjectRows,
+    paperRows,
+    chapterRows,
+    assessmentChapterRows,
+  );
   const series = toWeeklySeries(resultRows, assessmentRows, subjectRows);
 
   return (
@@ -136,6 +143,7 @@ export default async function ResultsPage({
       canDelete={canDelete}
       canCorrect={canCorrect}
       items={items}
+      scheduledCTs={scheduledCTs}
       unloggedAssessments={assessmentRows}
       series={series}
       today={localDate(new Date())}

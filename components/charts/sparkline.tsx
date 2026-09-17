@@ -15,14 +15,27 @@ export function Sparkline({
     return <svg width={width} height={height} aria-hidden="true" />;
   }
 
+  // One point has no line to draw between - a path with only a moveto
+  // command paints nothing, which used to leave this box empty (but still
+  // taking up its full width, so whatever sat beside it - "Latest: X%" -
+  // looked like it had drifted right for no reason). A dot marks the one
+  // score there is instead.
+  if (values.length === 1) {
+    return (
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
+        <circle cx={width / 2} cy={height / 2} r={3} fill="var(--chart-1)" />
+      </svg>
+    );
+  }
+
   const min = Math.min(...values);
   const max = Math.max(...values);
-  // A flat series (or a single point) still needs to draw a visible line
-  // rather than collapsing to the vertical midpoint's edge case.
+  // A flat series still needs to draw a visible line rather than collapsing
+  // to the vertical midpoint's edge case.
   const span = max - min || 1;
 
   const points = values.map((v, i) => ({
-    x: values.length === 1 ? width / 2 : (i / (values.length - 1)) * width,
+    x: (i / (values.length - 1)) * width,
     y: height - ((v - min) / span) * height,
   }));
 

@@ -37,7 +37,7 @@ function result(id: string, assessmentId: string, percentage: number): ResultRow
 }
 
 describe("toWeeklySeries", () => {
-  it("buckets a result into the week containing its date, plotting percentage", () => {
+  it("buckets a CWM result into the week containing its date, plotting percentage", () => {
     // 2026-08-30 is a Sunday.
     const assessments = [assessment("a1", "phy", "2026-08-31")]; // Monday, same week
     const results = [result("r1", "a1", 80)];
@@ -45,10 +45,11 @@ describe("toWeeklySeries", () => {
     const series = toWeeklySeries(results, assessments, subjects);
     expect(series).toHaveLength(1);
     expect(series[0].subjectId).toBe("phy");
-    expect(series[0].points).toEqual([{ weekStart: "2026-08-30", percentage: 80 }]);
+    expect(series[0].cwmPoints).toEqual([{ weekStart: "2026-08-30", percentage: 80 }]);
+    expect(series[0].ctPoints).toEqual([]);
   });
 
-  it("averages several results landing in the same week rather than overplotting", () => {
+  it("averages several results of the same type landing in the same week rather than overplotting", () => {
     const assessments = [
       assessment("a1", "phy", "2026-08-30"), // Sunday
       assessment("a2", "phy", "2026-09-01"), // Tuesday, same week
@@ -56,12 +57,13 @@ describe("toWeeklySeries", () => {
     const results = [result("r1", "a1", 80), result("r2", "a2", 60)];
 
     const series = toWeeklySeries(results, assessments, subjects);
-    expect(series[0].points).toEqual([{ weekStart: "2026-08-30", percentage: 70 }]);
+    expect(series[0].cwmPoints).toEqual([{ weekStart: "2026-08-30", percentage: 70 }]);
   });
 
-  it("plots CT and CWM on the same axis - percentage, never converted", () => {
+  it("keeps CT and CWM as two separate lines rather than averaging them together", () => {
     // A CWM's converted figure (out of 15) and a CT's (out of 25) are not
-    // comparable; percentage is. Mix the two types in one week.
+    // comparable, but percentage is - CLAUDE.md's "same axis" rule is about
+    // sharing an axis, not sharing a line. Mix the two types in one week.
     const assessments = [
       assessment("a1", "phy", "2026-08-30", "CWM"),
       assessment("a2", "phy", "2026-08-31", "CT"),
@@ -69,7 +71,8 @@ describe("toWeeklySeries", () => {
     const results = [result("r1", "a1", 90), result("r2", "a2", 70)];
 
     const series = toWeeklySeries(results, assessments, subjects);
-    expect(series[0].points).toEqual([{ weekStart: "2026-08-30", percentage: 80 }]);
+    expect(series[0].cwmPoints).toEqual([{ weekStart: "2026-08-30", percentage: 90 }]);
+    expect(series[0].ctPoints).toEqual([{ weekStart: "2026-08-30", percentage: 70 }]);
   });
 
   it("keeps subjects in separate series", () => {
@@ -80,7 +83,7 @@ describe("toWeeklySeries", () => {
     expect(series.map((s) => s.subjectName)).toEqual(["Chemistry", "Physics"]);
   });
 
-  it("orders points oldest to newest within a series", () => {
+  it("orders points oldest to newest within a line", () => {
     const assessments = [
       assessment("a1", "phy", "2026-09-06"),
       assessment("a2", "phy", "2026-08-30"),
@@ -88,7 +91,7 @@ describe("toWeeklySeries", () => {
     const results = [result("r1", "a1", 50), result("r2", "a2", 90)];
 
     const series = toWeeklySeries(results, assessments, subjects);
-    expect(series[0].points.map((p) => p.weekStart)).toEqual(["2026-08-30", "2026-09-06"]);
+    expect(series[0].cwmPoints.map((p) => p.weekStart)).toEqual(["2026-08-30", "2026-09-06"]);
   });
 
   it("skips a result whose assessment is missing rather than crashing", () => {
@@ -106,19 +109,23 @@ describe("toWeeklySeries", () => {
 });
 
 describe("lastNWeeks", () => {
-  it("keeps only points within the trailing window", () => {
+  it("keeps only points within the trailing window, independently per type", () => {
     const series = {
       subjectId: "phy",
       subjectName: "Physics",
-      points: [
+      ctPoints: [
         { weekStart: "2026-07-05", percentage: 40 },
-        { weekStart: "2026-08-16", percentage: 60 },
         { weekStart: "2026-08-30", percentage: 90 },
+      ],
+      cwmPoints: [
+        { weekStart: "2026-07-05", percentage: 45 },
+        { weekStart: "2026-08-16", percentage: 60 },
       ],
     };
 
-    // "now" = 2026-09-01, 6 weeks back excludes the July point.
+    // "now" = 2026-09-01, 6 weeks back excludes the July point of each type.
     const trimmed = lastNWeeks(series, 6, "2026-09-01");
-    expect(trimmed.points.map((p) => p.weekStart)).toEqual(["2026-08-16", "2026-08-30"]);
+    expect(trimmed.ctPoints.map((p) => p.weekStart)).toEqual(["2026-08-30"]);
+    expect(trimmed.cwmPoints.map((p) => p.weekStart)).toEqual(["2026-08-16"]);
   });
 });

@@ -84,7 +84,7 @@ export const DEFAULT_COLUMNS: PeriodColumn[] = [
   { period_no: 8, start_time: "12:45", end_time: "13:25" },
 ];
 
-function blankCell(day: DayOfWeek, periodNo: number): Cell {
+export function blankCell(day: DayOfWeek, periodNo: number): Cell {
   return {
     id: null,
     day_of_week: day,

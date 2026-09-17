@@ -227,12 +227,28 @@ async function openWindows(
     if (error || !assessment) continue;
 
     // §5.3's on-confirm attach picks the window "whose chapter matches the
-    // inferred chapter", so a window without this link can never be chosen.
-    await supabase.from("assessment_chapters").insert({
+    // inferred chapter", so a window without this link can never be chosen -
+    // and alreadyWatched (above) is keyed off this same link, not the
+    // assessment. A window left open without it would look unwatched again
+    // on tomorrow's run and get a second window opened for the same
+    // chapter, breaking "one window per chapter, ever" (§7.5). So a failed
+    // link fails the whole open, not just the naming: roll the assessment
+    // back rather than leave a chapter-less, permanently un-owned CWM alert
+    // - a chapter that's really at p80/p100 gets picked up again on the
+    // next run, cleanly, instead of being stuck with this broken one.
+    const { error: linkError } = await supabase.from("assessment_chapters").insert({
       assessment_id: assessment.id,
       chapter_id: chapter.id,
       student_id: studentId,
     });
+
+    if (linkError) {
+      console.error(
+        `openWindows: assessment_chapters insert failed for assessment ${assessment.id} (chapter ${chapter.id}), rolling back: ${linkError.message}`,
+      );
+      await supabase.from("assessments").delete().eq("id", assessment.id);
+      continue;
+    }
 
     opened += 1;
   }
@@ -259,6 +275,7 @@ type OpenAssessment = {
   student_subject_id: string;
   paper_id: string | null;
   created_at: string;
+  name: string | null;
 };
 
 async function advanceWindows(
@@ -272,7 +289,7 @@ async function advanceWindows(
 
   const { data: open } = await supabase
     .from("assessments")
-    .select("id, type, status, scheduled_date, student_subject_id, paper_id, created_at")
+    .select("id, type, status, scheduled_date, student_subject_id, paper_id, created_at, name")
     .eq("student_id", studentId)
     .is("window_closed_at", null)
     .in("status", ["predicted", "scheduled", "occurred"]);
@@ -395,6 +412,7 @@ async function advanceWindows(
         date,
         predicted: assessment.type === "CWM",
         chapter: chapterNames.get(assessment.id) ?? null,
+        name: assessment.type === "CT" ? (assessment.name ?? null) : null,
       });
     }
   }
@@ -581,7 +599,7 @@ async function loadUnlogged(
 
   const { data } = await supabase
     .from("assessments")
-    .select("id, type, occurred_date, student_subject_id, results(id)")
+    .select("id, type, occurred_date, student_subject_id, name, results(id)")
     .eq("student_id", studentId)
     .eq("status", "occurred")
     .not("occurred_date", "is", null)
@@ -597,6 +615,7 @@ async function loadUnlogged(
       type: row.type === "CT" ? ("CT" as const) : ("CWM" as const),
       occurredDate: row.occurred_date!,
       daysWaiting: daysBetween(row.occurred_date!, today),
+      name: row.type === "CT" ? (row.name ?? null) : null,
     }));
 }
 

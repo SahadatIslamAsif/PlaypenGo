@@ -29,6 +29,8 @@ export type UpcomingItem = {
   // 0017: an assessment can cover several chapters, so this is every chapter
   // the CT/CWM is linked to rather than a single id.
   chapterIds: string[];
+  /** 0031, CT-only - `name ?? "CT"` at render time, same as everywhere else. */
+  name: string | null;
 };
 
 /**
@@ -57,6 +59,7 @@ function scheduledCTs(
       subjectName: subjectById.get(a.student_subject_id)?.display_name ?? "Unknown subject",
       assessmentId: a.id,
       chapterIds: chapterIdsByAssessment.get(a.id) ?? [],
+      name: a.name ?? null,
     }));
 }
 
@@ -102,6 +105,7 @@ function predictedCWMs(
       subjectName: subjectById.get(chapter.student_subject_id)?.display_name ?? "Unknown subject",
       assessmentId: null,
       chapterIds: [chapter.id],
+      name: null,
     });
   }
 

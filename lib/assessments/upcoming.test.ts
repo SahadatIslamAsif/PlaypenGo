@@ -68,8 +68,29 @@ describe("buildUpcoming — scheduled CTs", () => {
         subjectName: "Physics",
         assessmentId: "a1",
         chapterIds: [],
+        name: null,
       },
     ]);
+  });
+
+  it("carries the CT's own name (0031) instead of leaving it for the caller to guess", () => {
+    const items = buildUpcoming(
+      [
+        assessment({
+          id: "a1",
+          type: "CT",
+          status: "scheduled",
+          scheduled_date: "2026-09-01",
+          name: "CT 2",
+        }),
+      ],
+      [],
+      [],
+      routine,
+      subjects,
+      "2026-08-30",
+    );
+    expect(items[0].name).toBe("CT 2");
   });
 
   it("lists every chapter a multi-chapter CT covers", () => {
@@ -131,6 +152,7 @@ describe("buildUpcoming — predicted CWMs, §7.3", () => {
         subjectName: "Chemistry",
         assessmentId: null,
         chapterIds: ["c1"],
+        name: null,
       },
     ]);
   });

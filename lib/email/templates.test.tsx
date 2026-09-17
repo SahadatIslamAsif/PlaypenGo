@@ -39,6 +39,7 @@ const full: DigestInput = {
       date: "2026-08-30",
       predicted: false,
       chapter: "1.5.4: Circular Motion",
+      name: "CT 2",
     },
     {
       assessmentId: "a2",
@@ -48,6 +49,7 @@ const full: DigestInput = {
       date: "2026-08-31",
       predicted: true,
       chapter: null,
+      name: null,
     },
     {
       assessmentId: "a3",
@@ -57,6 +59,7 @@ const full: DigestInput = {
       date: "2026-09-02",
       predicted: false,
       chapter: null,
+      name: null,
     },
   ],
   logged: [
@@ -82,7 +85,7 @@ const full: DigestInput = {
     },
   ],
   unlogged: [
-    { subject: "Biology", type: "CWM", occurredDate: "2026-08-25", daysWaiting: 4 },
+    { subject: "Biology", type: "CWM", occurredDate: "2026-08-25", daysWaiting: 4, name: null },
   ],
   weekInReview: {
     subjectAverages: [{ subject: "Physics", percentage: 82.5, count: 3 }],
@@ -104,6 +107,7 @@ const sparse: DigestInput = {
       date: "2026-08-30",
       predicted: true,
       chapter: null,
+      name: null,
     },
   ],
   logged: [],

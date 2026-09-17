@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Check } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { Combobox, type ComboboxItem } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,14 @@ import { resolveSubject, type SubjectCandidate } from "@/lib/routines/resolve";
 // what it implements — text that resolves shows the subject it matched, text
 // that doesn't gets the picker — and it behaves identically whether a person
 // typed the text or, from Phase 5, a parse filled it in.
+//
+// No per-cell "matched" chip and no manual break toggle: a resolved subject
+// already reads correctly in the box itself, a wrong reading is fixed by
+// retyping, and an unmatched cell is already surfaced centrally in the
+// routine screen's "Worth a look" warnings (crosscheck.ts) rather than
+// repeated on every cell. A break is set by is_academic — from the parse's
+// own read (prompt.ts rule 1) or by typing "Break" (resolveSubject's
+// isNonAcademic) — never by a dedicated button.
 
 export function PeriodCell({
   cell,
@@ -41,7 +49,18 @@ export function PeriodCell({
 
   const matched = subjects.find((s) => s.id === cell.student_subject_id);
   const raw = cell.raw_text.trim();
-  const unresolved = raw.length > 0 && cell.is_academic && !cell.student_subject_id;
+  const hasContent = raw.length > 0 || cell.teacher_raw.trim().length > 0;
+
+  // Clearing back to the same shape blankCell() produces, so a cleared cell
+  // reads as an untyped one everywhere else in the app - the warnings, the
+  // unresolved count, and gridToCommitPayload's own "no label and no subject
+  // is a hole in the timetable, drop the row" rule (grid.ts). That last part
+  // is what actually removes a wrongly-populated period on the next save,
+  // not anything this function does directly.
+  function handleClear() {
+    onChange({ raw_text: "", teacher_raw: "", student_subject_id: null, is_academic: true });
+    onCommit?.();
+  }
 
   // Re-resolve as the text changes so a known short form binds itself without
   // the user opening the picker at all. This is the payoff of every alias the
@@ -97,44 +116,17 @@ export function PeriodCell({
         />
       ) : null}
 
-      {/* A desktop column is about 110px wide, so both halves of this row have
-          to be able to give way: the chip truncates, the toggle never does. */}
-      <div className="flex min-w-0 items-center justify-between gap-1">
-        {matched ? (
-          <span className="inline-flex min-w-0 items-center gap-1 text-xs text-accent">
-            <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-            <span className="truncate">{matched.display_name}</span>
-          </span>
-        ) : unresolved ? (
-          <span className="truncate text-xs text-muted">Not matched yet</span>
-        ) : (
-          <span />
-        )}
-
+      {hasContent ? (
         <button
           type="button"
-          onClick={() => {
-            onChange({
-              is_academic: !cell.is_academic,
-              student_subject_id: cell.is_academic ? null : cell.student_subject_id,
-              teacher_raw: cell.is_academic ? "" : cell.teacher_raw,
-            });
-            onCommit?.();
-          }}
-          aria-pressed={!cell.is_academic}
-          title={cell.is_academic ? "Mark as a break" : "Mark as a lesson"}
-          className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2 py-1 text-xs transition-colors ${
-            cell.is_academic
-              ? "text-muted hover:text-ink"
-              : "bg-surface-sunk font-medium text-ink"
-          }`}
+          onClick={handleClear}
+          aria-label={`Clear period ${cell.period_no}`}
+          title="Clear this period"
+          className="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-button text-muted transition-colors hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          <Ban className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
-          {/* The word is dropped in the table, where it would cost more room
-              than the subject name it sits beside. title/aria-label carry it. */}
-          <span className={layout === "cell" ? "sr-only" : undefined}>Break</span>
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
         </button>
-      </div>
+      ) : null}
     </div>
   );
 }
