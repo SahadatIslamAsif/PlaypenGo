@@ -3,7 +3,7 @@ import { runEveningDigest } from "@/lib/notifications/engine";
 import { SCANS_BUCKET } from "@/lib/scans/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 
-// §7.2's cron route - "one job at 20:00 Asia/Dhaka = 14:00 UTC, triggered by
+// §7.2's cron route - "one job at 19:00 Asia/Dhaka = 13:00 UTC, triggered by
 // cron-job.org against POST /api/cron/evening-digest protected by
 // Authorization: Bearer ${CRON_SECRET}... Keep a vercel.json entry as
 // backup."

@@ -347,7 +347,7 @@ To reach it from a phone on the same network, bind to all interfaces and set `AP
 1. Create a hosted Supabase project, then `supabase link --project-ref <ref>` and `supabase db push`. Do not run `seed.sql` — those are test fixtures.
 2. In the Supabase dashboard, set Authentication → Site URL and Redirect URLs to the deployed URL. Account confirmation emails point there.
 3. Deploy to Vercel and add every variable above. Set `APP_URL` to the deployed URL and redeploy — Vercel resolves environment variables at build time.
-4. Point an external cron service at the nightly route with an `Authorization: Bearer` header, scheduled for 8:00 PM local time.
+4. Point an external cron service at the nightly route with an `Authorization: Bearer` header, scheduled for 7:00 PM local time.
 
 ---
 

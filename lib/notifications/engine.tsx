@@ -435,7 +435,7 @@ async function advanceWindows(
  * against a Dhaka-local `today` (`localDate(now, timeZone)`) — a plain slice
  * reads the UTC calendar date instead, which is the previous day for six hours
  * of every Dhaka evening (18:00-24:00 UTC = the six hours after Dhaka
- * midnight). Under the intended fixed 8pm-Dhaka (14:00 UTC) schedule the two
+ * midnight). Under the intended fixed 7pm-Dhaka (13:00 UTC) schedule the two
  * dates always agree and this was dormant, but a cron that lands hours late
  * inside that window would otherwise anchor a CWM's four occurrences one day
  * off from the date openWindows actually used to decide there were any.

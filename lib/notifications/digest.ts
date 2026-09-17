@@ -1,7 +1,7 @@
-// Composing the 8pm digest (ARCHITECTURE.md §7.1, §7.4).
+// Composing the 7pm digest (ARCHITECTURE.md §7.1, §7.4).
 //
 // §7.1 is the constraint everything here answers to: "One email, per person,
-// per day, maximum. Everything is folded into a single 8:00 PM (Asia/Dhaka)
+// per day, maximum. Everything is folded into a single 7:00 PM (Asia/Dhaka)
 // message. If every section is empty, nothing is sent. Violating this gets the
 // app muted in week two."
 //

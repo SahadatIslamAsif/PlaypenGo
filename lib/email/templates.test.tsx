@@ -1,6 +1,6 @@
 // Render smoke tests for §7.4's three templates.
 //
-// These exist because of when the templates run: once a night, at 8pm, inside a
+// These exist because of when the templates run: once a night, at 7pm, inside a
 // cron function nobody is watching. A template that throws on an empty section
 // or a null paper name fails there, silently, and the first sign of it is a
 // student asking why the app stopped emailing. So every template is rendered

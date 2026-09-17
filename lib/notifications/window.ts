@@ -249,7 +249,7 @@ export function planWindow(input: WindowInput): WindowPlan {
         (date) =>
           // §7.4 section 5: "predicted CWMs whose class day has passed". The
           // evening of the class day itself counts — school ended hours before
-          // the 8pm digest, and waiting a further day asks about a paper the
+          // the 7pm digest, and waiting a further day asks about a paper the
           // student may already be holding.
           date <= today &&
           // "Asked" means delivered, not merely written. A row's mere
