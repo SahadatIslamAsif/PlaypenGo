@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { mimeTypeFor, parsePaper } from "@/lib/scans/parse/client";
+import { recordGeminiCall } from "@/lib/gemini/usage";
+import { isQuotaExceeded, mimeTypeFor, parsePaper } from "@/lib/scans/parse/client";
 import { SCANS_BUCKET } from "@/lib/scans/storage";
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
@@ -82,7 +83,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     // seeded chapters is a separate resolution step this pass doesn't
     // build. inferred_chapter stays null until that lands, same as an
     // unseeded subject in the CLI (schema.ts's own documented behaviour).
-    const rawParse = await parsePaper(images);
+    const rawParse = await parsePaper(images, {
+      onAttempt: () => recordGeminiCall(supabase),
+    });
 
     const { error: updateError } = await supabase
       .from("scan_jobs")
@@ -93,8 +96,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
     return NextResponse.json({ status: "review" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "The parse failed.";
+    // scan_jobs.error is persisted and rendered as-is by scan-screen.tsx, so
+    // whatever lands here reaches a screen unfiltered - the Gemini SDK's own
+    // ApiError.message is the raw Google error body and never belongs there
+    // (CLAUDE.md's copy rule). A 429 is the one shape common enough to name
+    // specifically; anything else falls back to a generic message.
+    const message = isQuotaExceeded(error)
+      ? "Couldn't read this paper right now — the daily limit has been reached. It resets each afternoon, or use Log result to enter it by hand."
+      : "The paper couldn't be read.";
     await supabase.from("scan_jobs").update({ status: "failed", error: message }).eq("id", jobId);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: isQuotaExceeded(error) ? 429 : 500 });
   }
 }

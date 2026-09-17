@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { mimeTypeFor, parseRoutine } from "@/lib/routines/parse/client";
+import { recordGeminiCall } from "@/lib/gemini/usage";
+import { isQuotaExceeded, mimeTypeFor, parseRoutine } from "@/lib/routines/parse/client";
 import { ROUTINES_BUCKET } from "@/lib/routines/storage";
 import { createClient } from "@/lib/supabase/server";
 
@@ -73,10 +74,25 @@ export async function POST(request: Request) {
       mimeType: mimeTypeFor(imagePath),
     };
 
-    const raw = await parseRoutine(image, names);
+    const raw = await parseRoutine(image, names, {
+      onAttempt: () => recordGeminiCall(supabase),
+    });
     return NextResponse.json({ raw });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "The parse failed.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // The Gemini SDK's own ApiError.message is the raw Google error body -
+    // never shown as-is (CLAUDE.md's copy rule: what happened, what to do
+    // next, plain language). A 429 is the one shape common enough to name
+    // specifically; anything else falls back to a generic message rather
+    // than leaking whatever Google's JSON happened to say this time.
+    if (isQuotaExceeded(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "Couldn't read the routine right now — the daily limit has been reached. It resets each afternoon, or you can fill the grid in by hand.",
+        },
+        { status: 429 },
+      );
+    }
+    return NextResponse.json({ error: "The routine photo couldn't be read." }, { status: 500 });
   }
 }

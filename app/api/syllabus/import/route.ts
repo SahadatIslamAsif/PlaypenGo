@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { parseSyllabus } from "@/lib/syllabus/parse/client";
+import { recordGeminiCall } from "@/lib/gemini/usage";
+import { isQuotaExceeded, parseSyllabus } from "@/lib/syllabus/parse/client";
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -61,10 +62,25 @@ export async function POST(request: Request) {
 
   let raw;
   try {
-    raw = await parseSyllabus({ buffer, mimeType: file.type });
+    raw = await parseSyllabus(
+      { buffer, mimeType: file.type },
+      { onAttempt: () => recordGeminiCall(supabase) },
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "The parse failed.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    // The Gemini SDK's own ApiError.message is the raw Google error body -
+    // never shown as-is (CLAUDE.md's copy rule). A 429 is the one shape
+    // common enough to name specifically; anything else falls back to a
+    // generic message rather than leaking whatever Google's JSON said.
+    if (isQuotaExceeded(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "Couldn't read the syllabus right now — the daily limit has been reached. It resets each afternoon, or add the subjects and chapters by hand.",
+        },
+        { status: 429 },
+      );
+    }
+    return NextResponse.json({ error: "The syllabus couldn't be read." }, { status: 502 });
   }
 
   if (raw.subjects.length === 0) {

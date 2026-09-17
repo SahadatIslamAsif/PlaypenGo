@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ScanScreen, type JobStatus, type SubmittedJob } from "./_components/scan-screen";
 import { formatRaw } from "@/lib/assessments/marks";
+import { DAILY_WARNING_THRESHOLD, getGeminiUsageToday } from "@/lib/gemini/usage";
 import { createClient } from "@/lib/supabase/server";
 
 // Scanning is a student-only action (§3.3, §5.3: "Scanning is a
@@ -87,5 +88,18 @@ export default async function ScanPage({
     error: job.error,
   }));
 
-  return <ScanScreen studentId={user.id} initialJobs={initialJobs} attachTarget={attachTarget} />;
+  // Scan-only, per the design report this follows: routine and syllabus
+  // uploads are once-a-term actions, and the same warning there would be
+  // noise. Read once per page load - advisory only, never a gate.
+  const usageToday = await getGeminiUsageToday(supabase);
+  const showQuotaWarning = usageToday >= DAILY_WARNING_THRESHOLD;
+
+  return (
+    <ScanScreen
+      studentId={user.id}
+      initialJobs={initialJobs}
+      attachTarget={attachTarget}
+      showQuotaWarning={showQuotaWarning}
+    />
+  );
 }

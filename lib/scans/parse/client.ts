@@ -80,6 +80,14 @@ export type ParsePaperOptions = {
   seededChapterNames?: string[];
   /** Skip the dev cache and make a live call regardless of a cached hit. */
   forceLive?: boolean;
+  /**
+   * Called once per real outbound call to Gemini, including a 503's retry -
+   * lib/gemini/usage.ts's recordGeminiCall(), passed in by the route handler
+   * (which holds the Supabase client this file doesn't depend on). Omitted
+   * by every CLI caller, which is a no-op, not a broken count - those calls
+   * are dev/test tooling, not what the daily quota is being protected for.
+   */
+  onAttempt?: () => void | Promise<void>;
 };
 
 /** One page's bytes plus the MIME type Gemini needs alongside them. */
@@ -112,15 +120,27 @@ function isRetryableUnavailable(error: unknown): boolean {
   return error instanceof ApiError && error.status === 503;
 }
 
+// Not retried like 503 - a 429 means the day's quota is already spent, and a
+// second attempt seconds later fails the same way. The route handler is what
+// turns this into copy a person can act on (CLAUDE.md's error-copy rule);
+// this is just the typed check that lets it tell a quota rejection apart
+// from any other failure.
+export function isQuotaExceeded(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 429;
+}
+
 async function generateContentWithRetry(
   ai: GoogleGenAI,
   params: Parameters<GoogleGenAI["models"]["generateContent"]>[0],
+  onAttempt?: () => void | Promise<void>,
 ): ReturnType<GoogleGenAI["models"]["generateContent"]> {
+  await onAttempt?.();
   try {
     return await ai.models.generateContent(params);
   } catch (error) {
     if (!isRetryableUnavailable(error)) throw error;
     await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    await onAttempt?.();
     return await ai.models.generateContent(params);
   }
 }
@@ -170,19 +190,23 @@ export async function parsePaper(
     },
   }));
 
-  const response = await generateContentWithRetry(ai, {
-    model,
-    contents: [
-      {
-        role: "user" as const,
-        parts: [{ text: prompt }, ...imageParts],
+  const response = await generateContentWithRetry(
+    ai,
+    {
+      model,
+      contents: [
+        {
+          role: "user" as const,
+          parts: [{ text: prompt }, ...imageParts],
+        },
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: toSdkSchema(buildPaperParseSchema(seededChapterNames)),
       },
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: toSdkSchema(buildPaperParseSchema(seededChapterNames)),
     },
-  });
+    options.onAttempt,
+  );
 
   const text = response.text;
   if (!text) {

@@ -346,6 +346,27 @@ export type Database = {
           },
         ]
       }
+      gemini_usage: {
+        Row: {
+          created_at: string
+          id: string
+          request_count: number
+          usage_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_count?: number
+          usage_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_count?: number
+          usage_date?: string
+        }
+        Relationships: []
+      }
       guardian_links: {
         Row: {
           approved_at: string | null
@@ -1091,6 +1112,7 @@ export type Database = {
         Args: { p_entry: Json; p_job: string }
         Returns: Json
       }
+      get_gemini_usage_today: { Args: never; Returns: number }
       is_guardian_of: { Args: { p_student: string }; Returns: boolean }
       is_owner_student: { Args: { p_student: string }; Returns: boolean }
       is_pending_guardian_for_my_student: {
@@ -1123,6 +1145,7 @@ export type Database = {
         Returns: Json
       }
       my_role: { Args: never; Returns: string }
+      record_gemini_call: { Args: never; Returns: number }
       redeem_link_code: { Args: { p_code: string }; Returns: Json }
       save_ct: { Args: { p_entry: Json; p_student: string }; Returns: Json }
       set_assessment_chapters: {

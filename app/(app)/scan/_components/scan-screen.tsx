@@ -1,9 +1,10 @@
 "use client";
 
-import { Camera, X } from "lucide-react";
+import { AlertTriangle, Camera, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useCameraCapture } from "../../_components/camera-capture";
 import { compressImage } from "@/lib/images/compress";
 import {
@@ -62,6 +63,7 @@ export function ScanScreen({
   studentId,
   initialJobs,
   attachTarget,
+  showQuotaWarning,
 }: {
   studentId: string;
   initialJobs: SubmittedJob[];
@@ -72,6 +74,9 @@ export function ScanScreen({
    * way; only what happens after Done differs (one job, carrying this
    * result's id, instead of one job per paper). */
   attachTarget: { resultId: string; label: string } | null;
+  /** lib/gemini/usage.ts's DAILY_WARNING_THRESHOLD, read once by page.tsx.
+   * Advisory only - it never disables capture or Done. */
+  showQuotaWarning: boolean;
 }) {
   const [pages, setPages] = useState<CapturedPage[]>([]);
   const [capturing, setCapturing] = useState(false);
@@ -312,6 +317,15 @@ export function ScanScreen({
         onZoom={setZoomedId}
         singlePaper={attachTarget !== null}
       />
+
+      {showQuotaWarning ? (
+        <Card className="flex flex-row items-center gap-2 bg-tint-sage py-3">
+          <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+          <p className="text-sm text-tint-ink">
+            You&apos;ve used most of today&apos;s scanning limit — it resets each afternoon.
+          </p>
+        </Card>
+      ) : null}
 
       <div className="flex items-center gap-3">
         <button
