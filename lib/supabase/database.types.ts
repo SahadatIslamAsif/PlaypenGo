@@ -1100,6 +1100,7 @@ export type Database = {
         Args: { p_raw: string; p_student: string; p_subject: string }
         Returns: boolean
       }
+      check_registered_role: { Args: { p_email: string }; Returns: string }
       commit_routine_grid: {
         Args: { p_grid: Json; p_session: string; p_student: string }
         Returns: Json

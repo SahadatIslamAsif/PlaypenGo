@@ -112,8 +112,19 @@ export async function signUpAction(
   // exactly what was submitted, because it is what was submitted.
   if (signUpData.user && !signUpData.session) {
     if (!signUpData.user.identities || signUpData.user.identities.length === 0) {
+      // GoTrue's own response can't say which role the existing account has
+      // — that's exactly what it's built to hide. check_registered_role
+      // (0033) is a deliberate, narrow reversal of that specifically for
+      // this already-confirmed case: naming the role is worth more to a
+      // household signing up in one sitting than the enumeration
+      // protection is worth defending in an app with no hostile traffic.
+      const { data: existingRole } = await supabase.rpc("check_registered_role", {
+        p_email: email,
+      });
       return {
-        error: "This email already has an account. Sign in instead, or contact your tutor if the details need fixing.",
+        error: existingRole
+          ? `This email already has a ${existingRole} account. Sign in instead, or contact your tutor if the details need fixing.`
+          : "This email already has an account. Sign in instead, or contact your tutor if the details need fixing.",
         confirmationSent: false,
         email: null,
       };
