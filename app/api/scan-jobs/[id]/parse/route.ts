@@ -79,11 +79,28 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       }),
     );
 
-    // seededChapterNames is empty for now - matching a subject to its
-    // seeded chapters is a separate resolution step this pass doesn't
-    // build. inferred_chapter stays null until that lands, same as an
-    // unseeded subject in the CLI (schema.ts's own documented behaviour).
+    // schema.ts's own comment says seededChapterNames "scopes inferred_chapter
+    // to one subject's chapters" on the assumption the caller already knows
+    // which subject a paper is for before parsing it - which nothing here
+    // does, because subject_raw (the thing that resolves a subject) is
+    // itself part of THIS parse's output. Waiting for a resolved subject
+    // would mean a second Gemini call per paper, which the whole app is
+    // built to avoid (CLAUDE.md: "one call per assessment, sequential,
+    // never parallel"). So this passes every chapter this student has,
+    // across every subject, and lets the model's own read of the paper's
+    // content (which already drives subject_raw and topic_line) pick a
+    // plausible one from the whole tree - the same "matched, not
+    // transcribed" contract as before, just not pre-narrowed. At 114
+    // chapters (this student's real tree) that's ~2.5KB of names, negligible
+    // next to the images the request already carries.
+    const { data: chapterRows } = await supabase
+      .from("chapters")
+      .select("name")
+      .eq("student_id", user.id);
+    const seededChapterNames = (chapterRows ?? []).map((c) => c.name);
+
     const rawParse = await parsePaper(images, {
+      seededChapterNames,
       onAttempt: () => recordGeminiCall(supabase),
     });
 

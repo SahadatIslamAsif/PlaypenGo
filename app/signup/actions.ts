@@ -83,7 +83,53 @@ export async function signUpAction(
   // person clicks the link in app/auth/confirm/route.ts. Redirecting to "/"
   // here would just bounce straight back to /login with nothing explaining
   // why, so show the confirmation-pending state instead.
+  //
+  // But "user present, no session" is not on its own evidence of a genuine
+  // new signup — GoTrue collapses two other cases into that exact same
+  // shape, specifically so a client can never tell them apart from a real
+  // one by the shape alone (email enumeration protection):
+  //
+  //   1. The email is already registered AND confirmed. Verified directly
+  //      against this project: the response has error: null, session: null,
+  //      a fabricated user.id, and user_metadata that echoes back whatever
+  //      this call just submitted (not the real account's data) - but
+  //      user.identities is always [] for this case, which nothing else
+  //      returned by signUp() ever is. That is the one field GoTrue can't
+  //      fake without attaching a real identity, so it's the only reliable
+  //      signal here.
+  //   2. The email is registered but still unconfirmed, and this is a
+  //      second signup attempt with different details (a typo'd role, a
+  //      different family member reusing the address by mistake). Here
+  //      GoTrue is not obfuscating - it returns the ORIGINAL pending
+  //      signup's real identities and real user_metadata, silently
+  //      discarding whatever this call just submitted. identities.length is
+  //      > 0 (it's a real, non-fake identity), so case 1's check doesn't
+  //      catch it - only comparing the returned metadata against what this
+  //      submission actually sent does.
+  //
+  // A genuine first-time signup satisfies neither check: identities is
+  // non-empty (a real identity was just created) and user_metadata is
+  // exactly what was submitted, because it is what was submitted.
   if (signUpData.user && !signUpData.session) {
+    if (!signUpData.user.identities || signUpData.user.identities.length === 0) {
+      return {
+        error: "This email already has an account. Sign in instead, or contact your tutor if the details need fixing.",
+        confirmationSent: false,
+        email: null,
+      };
+    }
+
+    const returnedRole = signUpData.user.user_metadata?.role;
+    const returnedName = signUpData.user.user_metadata?.full_name;
+    if (returnedRole !== role || returnedName !== fullName) {
+      return {
+        error:
+          "We already sent a confirmation link to this address — check your inbox, or contact your tutor if the details were wrong.",
+        confirmationSent: false,
+        email: null,
+      };
+    }
+
     return { error: null, confirmationSent: true, email };
   }
 

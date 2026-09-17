@@ -43,7 +43,7 @@ export function ReviewScreen({
   jobId,
   rawParse,
   pageImages,
-  seededChapters,
+  allChapters,
   subjectOptions,
   profileName,
   matchedSubjectId,
@@ -55,7 +55,11 @@ export function ReviewScreen({
   /** One signed URL per page, same order as rawParse.pages. An empty string
    * stands in for a page whose image couldn't be loaded. */
   pageImages: string[];
-  seededChapters: ChapterCandidate[];
+  /** Every chapter this student has, across every subject (page.tsx) - not
+   * just the AI-matched one. The Subject field below is an editable
+   * `<Select>`, so the visible chapter list is re-derived from whichever
+   * subject is actually selected right now, not fixed to the initial guess. */
+  allChapters: (ChapterCandidate & { student_subject_id: string })[];
   subjectOptions: SubjectOption[];
   profileName: string;
   /** resolveSubject's read of header.subject_raw against this student's
@@ -86,6 +90,16 @@ export function ReviewScreen({
   const extraPage1Ellipses = useMemo(
     () => page1Ellipses(markCandidates).slice(1),
     [markCandidates],
+  );
+
+  // Declared here, ahead of the confidence/derived block below, because
+  // seededChapters (and everything derived from it - the centre-line match,
+  // the inferred chapter) has to be keyed to whichever subject is actually
+  // selected, not just the AI's initial guess (item 2's fix).
+  const [subjectId, setSubjectId] = useState(matchedSubjectId ?? subjectOptions[0]?.id ?? "");
+  const seededChapters = useMemo(
+    () => allChapters.filter((c) => c.student_subject_id === subjectId),
+    [allChapters, subjectId],
   );
 
   const centreLineText = useMemo(() => toCentreLineText(rawParse), [rawParse]);
@@ -145,7 +159,6 @@ export function ReviewScreen({
   const [type, setType] = useState<AssessmentType>(
     typeAgreement === "disagree" || rawParse.body_type_hint === "CT" ? "CT" : "CWM",
   );
-  const [subjectId, setSubjectId] = useState(matchedSubjectId ?? subjectOptions[0]?.id ?? "");
   const [date, setDate] = useState(rawParse.header.date ?? "");
   // "Never auto-select a chapter below the confidence threshold" - pre-
   // ticked exactly when the suggestion clears deriveConfidence's own bar,
@@ -401,7 +414,13 @@ export function ReviewScreen({
           <Select
             id="rv_subject"
             value={subjectId}
-            onChange={(e) => setSubjectId(e.target.value)}
+            onChange={(e) => {
+              setSubjectId(e.target.value);
+              // The previous selection belongs to the old subject's list -
+              // carrying it over would attach a chapter from one subject to
+              // an assessment now filed under a different one.
+              setChapterIds([]);
+            }}
             onFocus={scrollIntoViewOnFocus}
           >
             {subjectOptions.map((s) => (

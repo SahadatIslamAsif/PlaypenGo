@@ -260,11 +260,17 @@ const rawConfidenceSchema: GeminiSchema = {
 };
 
 /**
- * `seededChapterNames` scopes `inferred_chapter`'s enum to one subject's
- * chapters - the caller has already resolved which subject this paper is for
- * (from the routine, or from `subject_raw` once matched) before requesting a
- * parse. An empty list means no seeded chapters exist yet for that subject;
- * the field is still nullable, so the model can still return null.
+ * `seededChapterNames` scopes `inferred_chapter`'s enum to whatever chapter
+ * names the caller passes in. The live scan route (app/api/scan-jobs/[id]/parse)
+ * doesn't know which subject a paper is for yet - subject_raw, the thing
+ * that resolves a subject, is itself part of this same parse's output - so
+ * it passes every chapter the student has, across every subject, rather
+ * than one subject's list; the model's own read of the paper's content is
+ * what narrows it down, the same way it already drives subject_raw and
+ * topic_line. A CLI/fixture caller that already knows the subject (a
+ * fixtures/papers/*.expected.json golden, say) can still pass a narrower
+ * list. An empty list means no seeded chapters exist at all yet; the field
+ * is still nullable, so the model can always return null instead.
  */
 export function buildPaperParseSchema(seededChapterNames: string[]): GeminiSchema {
   return {

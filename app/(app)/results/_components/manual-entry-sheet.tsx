@@ -41,7 +41,7 @@ export function ManualEntrySheet({
   const [subjectId, setSubjectId] = useState("");
   const [paperId, setPaperId] = useState("");
   const [type, setType] = useState<AssessmentType>("CWM");
-  const [chapterId, setChapterId] = useState("");
+  const [chapterIds, setChapterIds] = useState<string[]>([]);
   const [obtained, setObtained] = useState("");
   const [total, setTotal] = useState("");
   const [paperMissing, setPaperMissing] = useState(false);
@@ -67,11 +67,15 @@ export function ManualEntrySheet({
       ? previewMarks(Number(obtained), Number(total), type)
       : null;
 
+  function toggleChapter(id: string) {
+    setChapterIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  }
+
   function reset() {
     setSubjectId("");
     setPaperId("");
     setType("CWM");
-    setChapterId("");
+    setChapterIds([]);
     setObtained("");
     setTotal("");
     setPaperMissing(false);
@@ -99,7 +103,7 @@ export function ManualEntrySheet({
       const result = await saveManualResult(studentId, {
         student_subject_id: subjectId,
         paper_id: paperId || null,
-        chapter_ids: chapterId ? [chapterId] : [],
+        chapter_ids: chapterIds,
         type,
         occurred_date: date,
         raw_obtained: Number(obtained),
@@ -121,7 +125,7 @@ export function ManualEntrySheet({
             onChange={(e) => {
               setSubjectId(e.target.value);
               setPaperId("");
-              setChapterId("");
+              setChapterIds([]);
             }}
           >
             <option value="">Choose a subject</option>
@@ -140,7 +144,7 @@ export function ManualEntrySheet({
               value={paperId}
               onChange={(e) => {
                 setPaperId(e.target.value);
-                setChapterId("");
+                setChapterIds([]);
               }}
             >
               <option value="">Choose a paper</option>
@@ -171,15 +175,29 @@ export function ManualEntrySheet({
         </Field>
 
         {availableChapters.length > 0 ? (
-          <Field label="Chapter (optional)" htmlFor="me_chapter">
-            <Select id="me_chapter" value={chapterId} onChange={(e) => setChapterId(e.target.value)}>
-              <option value="">No chapter</option>
+          <Field label="Chapters (optional)" htmlFor="me_chapter">
+            <div id="me_chapter" className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm text-body">
+                <input
+                  type="checkbox"
+                  checked={chapterIds.length === 0}
+                  onChange={() => setChapterIds([])}
+                  className="h-4 w-4 rounded border-hairline accent-[color:var(--accent)]"
+                />
+                No chapter
+              </label>
               {availableChapters.map((c) => (
-                <option key={c.id} value={c.id}>
+                <label key={c.id} className="flex items-center gap-2 text-sm text-body">
+                  <input
+                    type="checkbox"
+                    checked={chapterIds.includes(c.id)}
+                    onChange={() => toggleChapter(c.id)}
+                    className="h-4 w-4 rounded border-hairline accent-[color:var(--accent)]"
+                  />
                   {c.name}
-                </option>
+                </label>
               ))}
-            </Select>
+            </div>
           </Field>
         ) : null}
 

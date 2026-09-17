@@ -233,15 +233,19 @@ export default async function ScanReviewPage({
     subjectCandidates,
   );
 
-  const [{ data: chapters }, { data: scheduledCTs }, { data: periods }] = await Promise.all([
-    matchedSubjectId
-      ? supabase
-          .from("chapters")
-          .select("id, name")
-          .eq("student_id", user.id)
-          .eq("student_subject_id", matchedSubjectId)
-          .order("sort_order")
-      : Promise.resolve({ data: [] }),
+  // Every one of this student's chapters, not just the matched subject's -
+  // the Subject field below is editable (a `<Select>`, not a fixed label),
+  // and a chapter list that only ever covered the AI's own initial guess
+  // went stale the moment someone picked a different subject from it.
+  // Fetching everything once here, keyed by student_subject_id, lets
+  // ReviewScreen re-derive the visible list from whatever subject is
+  // actually selected, live, with no second round trip.
+  const [{ data: allChapters }, { data: scheduledCTs }, { data: periods }] = await Promise.all([
+    supabase
+      .from("chapters")
+      .select("id, name, student_subject_id")
+      .eq("student_id", user.id)
+      .order("sort_order"),
     matchedSubjectId && rawParse.header.date
       ? supabase
           .from("assessments")
@@ -284,7 +288,7 @@ export default async function ScanReviewPage({
       jobId={jobId}
       rawParse={rawParse}
       pageImages={pageImages.map((url) => url ?? "")}
-      seededChapters={chapters ?? []}
+      allChapters={allChapters ?? []}
       subjectOptions={subjectOptions}
       profileName={profile?.full_name ?? ""}
       matchedSubjectId={matchedSubjectId}
