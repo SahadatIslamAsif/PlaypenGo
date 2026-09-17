@@ -21,6 +21,7 @@ import {
   describeAssessment,
   formatConverted,
   formatRaw,
+  typeLabel,
   type DigestAssessment,
   type DigestResult,
   type WeekInReview,
@@ -128,7 +129,16 @@ export function CompactSchedule({ assessments }: { assessments: DigestAssessment
               </td>
               <td style={style.td}>
                 {items.map((a) => (
-                  <div key={a.assessmentId}>{describeAssessment(a)}</div>
+                  <div key={a.assessmentId} style={{ marginBottom: "4px" }}>
+                    {describeAssessment(a)}
+                    {/* The compact table replaces the Tomorrow/Day after
+                        cards on a busy week - it still owes the chapter
+                        name a scheduled CT or predicted CWM is about,
+                        same as AssessmentEntry does outside it. */}
+                    {a.chapter ? (
+                      <div style={{ fontSize: "12px", color: color.muted }}>{a.chapter}</div>
+                    ) : null}
+                  </div>
                 ))}
               </td>
             </tr>
@@ -164,7 +174,7 @@ export function ResultRows({ results }: { results: DigestResult[] }) {
                 {r.paper ? `${r.subject} ${r.paper}` : r.subject}
               </span>
               <div style={{ fontSize: "12px", color: color.muted }}>
-                {`${r.type} · ${shortDate(r.occurredDate)}${r.paperMissing ? " · logged manually (no paper attached)" : ""}`}
+                {`${typeLabel(r.type)} · ${shortDate(r.occurredDate)}${r.paperMissing ? " · logged manually (no paper attached)" : ""}`}
               </div>
             </td>
             {/* Built as one template literal, not adjacent expressions. React
@@ -212,8 +222,8 @@ export function ConfirmQuestion({
   return (
     <Section style={{ marginBottom: "16px" }}>
       <Text style={{ ...style.paragraph, marginBottom: "8px" }}>
-        Did the <strong style={{ color: color.ink }}>{subject}</strong> CWM happen on{" "}
-        {shortDate(targetDate)}?
+        Did the <strong style={{ color: color.ink }}>{subject}</strong> surprise marking happen
+        on {shortDate(targetDate)}?
       </Text>
       <Link href={yesUrl} style={{ ...style.buttonPrimary, marginRight: "8px" }}>
         Yes

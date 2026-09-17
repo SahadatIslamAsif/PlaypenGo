@@ -15,7 +15,8 @@
     "db:seed-catalog": "tsx --env-file=.env.local scripts/seed-subjects-catalog.ts",
     "db:seed-tutor": "tsx --env-file=.env.local scripts/seed-tutor-allowlist.ts",
     "parse:check-fixtures": "tsx --env-file=.env.local scripts/check-paper-fixtures.ts",
-    "icons:generate": "tsx scripts/generate-icons.tsx"
+    "icons:generate": "tsx scripts/generate-icons.tsx",
+    "email:preview": "tsx scripts/preview-emails.ts"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",

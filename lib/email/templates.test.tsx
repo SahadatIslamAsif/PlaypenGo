@@ -126,11 +126,15 @@ describe("StudentDigestEmail", () => {
       <StudentDigestEmail digest={digest} subject={subjectLine(digest)} baseUrl={BASE_URL} />,
     );
 
-    expect(html).toContain("Physics CT");
-    // The prediction is always worded as one.
-    expect(html).toContain("Env. Management CWM likely");
-    expect(html).toContain("Maths Add Math CT");
+    expect(html).toContain("Physics CT 2");
+    // The prediction is always worded as one, in plain English rather than
+    // the app's own "CWM" shorthand.
+    expect(html).toContain("Env. Management surprise marking likely");
+    expect(html).toContain("Maths Add Math Test");
     expect(html).toContain("Biology");
+    // Chapter name rides along beside a scheduled test, the same way it
+    // does for a predicted surprise marking.
+    expect(html).toContain("1.5.4: Circular Motion");
   });
 
   it("shows the raw mark and the converted mark together", async () => {
@@ -161,7 +165,7 @@ describe("StudentDigestEmail", () => {
       <StudentDigestEmail digest={digest} subject={subjectLine(digest)} baseUrl={BASE_URL} />,
     );
 
-    expect(html).toContain("Physics CWM likely");
+    expect(html).toContain("Physics surprise marking likely");
     expect(html).not.toContain("Did this happen?");
     expect(html).not.toContain("Logged since yesterday");
     expect(html).not.toContain("Rest of the week");
@@ -184,6 +188,9 @@ describe("StudentDigestEmail", () => {
 
     expect(html).toContain("The next few days");
     expect(html).not.toContain(">Tomorrow<");
+    // The compact table replaces the Tomorrow/Day after cards entirely, so
+    // it has to carry the chapter name itself rather than losing it.
+    expect(html).toContain("1.5.4: Circular Motion");
   });
 
   it("produces a plain-text alternative", async () => {
@@ -193,7 +200,7 @@ describe("StudentDigestEmail", () => {
       { plainText: true },
     );
 
-    expect(text).toContain("Physics CT");
+    expect(text).toContain("Physics CT 2");
     expect(text.length).toBeGreaterThan(50);
   });
 
@@ -214,8 +221,8 @@ describe("GuardianDigestEmail", () => {
       <GuardianDigestEmail digest={digest} subject={subjectLine(digest)} />,
     );
 
-    expect(html).toContain("Physics CT");
-    expect(html).toContain("Env. Management CWM likely");
+    expect(html).toContain("Physics CT 2");
+    expect(html).toContain("Env. Management surprise marking likely");
     // §1: "Full transparency — no filtering of bad marks."
     expect(html).toContain("15/15");
     expect(html).toContain("15.0/15");

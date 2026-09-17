@@ -267,7 +267,7 @@ describe("subjectLine — §7.4's adaptive line", () => {
       }),
     );
 
-    expect(subjectLine(digest)).toBe("Tomorrow: Physics CT + Chemistry CWM likely");
+    expect(subjectLine(digest)).toBe("Tomorrow: Physics Test + Chemistry surprise marking likely");
   });
 
   it("names two and counts the rest", () => {
@@ -284,7 +284,7 @@ describe("subjectLine — §7.4's adaptive line", () => {
 
     // Same day, same type: alphabetical. Arbitrary, but stable night to night,
     // which is what stops the subject line churning while nothing has changed.
-    expect(subjectLine(digest)).toBe("Tomorrow: Biology CT + Chemistry CT +2 more");
+    expect(subjectLine(digest)).toBe("Tomorrow: Biology Test + Chemistry Test +2 more");
   });
 
   it("names the paper when a subject splits into two", () => {
@@ -296,7 +296,7 @@ describe("subjectLine — §7.4's adaptive line", () => {
       }),
     );
 
-    expect(subjectLine(digest)).toBe("Tomorrow: Maths Add Math CT");
+    expect(subjectLine(digest)).toBe("Tomorrow: Maths Add Math Test");
   });
 
   it("falls back to the day after when tomorrow is clear", () => {
@@ -304,7 +304,7 @@ describe("subjectLine — §7.4's adaptive line", () => {
       input({ upcoming: [assessment({ subject: "Physics", date: "2026-08-31" })] }),
     );
 
-    expect(subjectLine(digest)).toBe("Day after: Physics CWM likely");
+    expect(subjectLine(digest)).toBe("Day after: Physics surprise marking likely");
   });
 
   it("asks the Yes/No question when that is why the mail is going out", () => {
@@ -316,7 +316,7 @@ describe("subjectLine — §7.4's adaptive line", () => {
       }),
     );
 
-    expect(subjectLine(digest)).toBe("Did the Physics CWM happen?");
+    expect(subjectLine(digest)).toBe("Did the Physics surprise marking happen?");
   });
 
   it("reports a single logged mark in the subject line", () => {
@@ -324,7 +324,7 @@ describe("subjectLine — §7.4's adaptive line", () => {
       input({ logged: [result({ subject: "Physics", type: "CWM" })] }),
     );
 
-    expect(subjectLine(digest)).toBe("Physics CWM: 8/10");
+    expect(subjectLine(digest)).toBe("Physics surprise marking: 8/10");
   });
 
   it("counts them when there is more than one", () => {
@@ -424,19 +424,19 @@ describe("composeTutorDigest — §7.4, §8", () => {
       },
     ]);
 
-    expect(tutorSubjectLine(digest)).toBe("Rakib tomorrow: Physics CT");
+    expect(tutorSubjectLine(digest)).toBe("Rakib tomorrow: Physics Test");
   });
 });
 
 describe("describeAssessment", () => {
-  it("marks a prediction as likely and a scheduled CT as fact", () => {
+  it("marks a prediction as likely and a scheduled test as fact, spelled out in plain English", () => {
     expect(describeAssessment(assessment({ subject: "Chemistry", date: "2026-08-30" })))
-      .toBe("Chemistry CWM likely");
+      .toBe("Chemistry surprise marking likely");
     expect(
       describeAssessment(
         assessment({ subject: "Physics", date: "2026-08-30", type: "CT", predicted: false }),
       ),
-    ).toBe("Physics CT");
+    ).toBe("Physics Test");
   });
 
   it("names a CT instead of the generic label once it has one — 0031", () => {

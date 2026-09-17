@@ -20,6 +20,7 @@ import {
   type StudentDigest,
   type TutorDigest,
   describeAssessment,
+  typeLabel,
 } from "@/lib/notifications/digest";
 import {
   AssessmentEntry,
@@ -128,7 +129,7 @@ export function StudentDigestEmail({
           {digest.unlogged.map((u, i) => (
             <Section key={`${u.subject}-${i}`} style={style.entry}>
               <Text style={style.entryTitle}>
-                {`${u.subject} ${u.type === "CT" ? (u.name ?? "CT") : u.type}`}
+                {`${u.subject} ${u.name ?? typeLabel(u.type)}`}
               </Text>
               <Text style={style.entryMeta}>
                 {`${shortDate(u.occurredDate)} · waiting ${u.daysWaiting} ${u.daysWaiting === 1 ? "day" : "days"}`}
@@ -220,7 +221,7 @@ export function GuardianDigestEmail({
           {digest.unlogged.map((u, i) => (
             <Section key={`${u.subject}-${i}`} style={style.entry}>
               <Text style={style.entryTitle}>
-                {`${u.subject} ${u.type === "CT" ? (u.name ?? "CT") : u.type}`}
+                {`${u.subject} ${u.name ?? typeLabel(u.type)}`}
               </Text>
               {/* "Taken", not "Sat" — the short date already begins with a
                   weekday, and "Sat Tue 25 Aug" reads as a contradiction. */}
@@ -277,7 +278,12 @@ export function TutorDigestEmail({
                     <span style={{ color: color.muted }}>Nothing</span>
                   ) : (
                     r.tomorrow.map((a) => (
-                      <div key={a.assessmentId}>{describeAssessment(a)}</div>
+                      <div key={a.assessmentId} style={{ marginBottom: "4px" }}>
+                        {describeAssessment(a)}
+                        {a.chapter ? (
+                          <div style={{ fontSize: "12px", color: color.muted }}>{a.chapter}</div>
+                        ) : null}
+                      </div>
                     ))
                   )}
                 </td>

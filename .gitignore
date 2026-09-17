@@ -49,6 +49,9 @@ supabase/.temp
 # dev-only Gemini parse cache
 /.cache/
 
+# dev-only rendered email previews (scripts/preview-emails.ts)
+/.email-preview/
+
 # fixtures/papers/*: real photos of a minor's exam papers (name, marks,
 # handwriting) - kept local-only
 fixtures/papers/*.jpg

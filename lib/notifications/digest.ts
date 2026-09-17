@@ -194,11 +194,25 @@ export function isEmptyDigest(digest: StudentDigest): boolean {
   );
 }
 
-/** "Physics CT 2", "Chemistry CWM likely". */
+/**
+ * The email's row headings spell the assessment type out in plain words
+ * rather than the app's own internal "CT"/"CWM" shorthand — a guardian
+ * arriving cold from an email link has none of the in-app onboarding that
+ * makes those acronyms legible, so the email is the one place that
+ * shorthand doesn't belong. §0's own vocabulary ("a scheduled test", "a
+ * surprise marking") is what this borrows.
+ */
+export function typeLabel(type: AssessmentType): string {
+  return type === "CT" ? "Test" : "surprise marking";
+}
+
+/** "Physics Test 2", "Chemistry surprise marking likely". */
 export function describeAssessment(a: DigestAssessment): string {
   const subject = a.paper ? `${a.subject} ${a.paper}` : a.subject;
-  if (a.type === "CT") return `${subject} ${a.name ?? "CT"}`;
-  return a.predicted ? `${subject} ${a.type} likely` : `${subject} ${a.type}`;
+  if (a.type === "CT") return `${subject} ${a.name ?? typeLabel("CT")}`;
+  return a.predicted
+    ? `${subject} ${typeLabel("CWM")} likely`
+    : `${subject} ${typeLabel("CWM")}`;
 }
 
 /** How many assessments a subject line names before it says "+N more". */
@@ -225,14 +239,14 @@ export function subjectLine(digest: StudentDigest): string {
   if (digest.confirms.length > 0) {
     const first = digest.confirms[0];
     return digest.confirms.length === 1
-      ? `Did the ${first.subject} CWM happen?`
-      : `Did these ${digest.confirms.length} CWMs happen?`;
+      ? `Did the ${first.subject} surprise marking happen?`
+      : `Did these ${digest.confirms.length} surprise markings happen?`;
   }
 
   if (digest.logged.length > 0) {
     const first = digest.logged[0];
     return digest.logged.length === 1
-      ? `${first.subject} ${first.type}: ${formatRaw(first.rawObtained)}/${formatRaw(first.rawTotal)}`
+      ? `${first.subject} ${typeLabel(first.type)}: ${formatRaw(first.rawObtained)}/${formatRaw(first.rawTotal)}`
       : `${digest.logged.length} results logged`;
   }
 
