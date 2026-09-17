@@ -20,7 +20,14 @@ import { useEffect, useRef, useState } from "react";
 
 type Facing = "environment" | "user";
 
-export function useCameraCapture(onCapture: (file: File) => void) {
+// `onCapture` always receives an array — one file for a live camera snapshot,
+// or however many the fallback file picker's `multiple` selection produced,
+// in selection order, so a multi-page caller (scan) can add them all as one
+// batch instead of racing several single-file calls against its own page cap.
+export function useCameraCapture(
+  onCapture: (files: File[]) => void,
+  options?: { multiple?: boolean },
+) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fallbackInputRef = useRef<HTMLInputElement>(null);
@@ -88,7 +95,7 @@ export function useCameraCapture(onCapture: (file: File) => void) {
     canvas.toBlob(
       (blob) => {
         if (blob) {
-          onCapture(new File([blob], `capture-${Date.now()}.jpg`, { type: "image/jpeg" }));
+          onCapture([new File([blob], `capture-${Date.now()}.jpg`, { type: "image/jpeg" })]);
         }
         close();
       },
@@ -102,11 +109,12 @@ export function useCameraCapture(onCapture: (file: File) => void) {
     type: "file" as const,
     accept: "image/*",
     capture: "environment" as const,
+    multiple: options?.multiple ?? false,
     className: "hidden",
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) onCapture(file);
+      const files = Array.from(e.target.files ?? []);
       e.target.value = "";
+      if (files.length > 0) onCapture(files);
     },
   };
 

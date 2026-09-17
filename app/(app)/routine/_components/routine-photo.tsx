@@ -67,7 +67,9 @@ export function RoutinePhoto({
   }
 
   const { open: openCamera, modal: cameraModal, fallbackInputProps } = useCameraCapture(
-    (file) => void handleFile(file),
+    ([file]) => {
+      if (file) void handleFile(file);
+    },
   );
 
   if (!shown && !editable) return null;

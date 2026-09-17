@@ -88,15 +88,25 @@ export function ScanScreen({
   const atCap = pages.length >= MAX_PAGES;
   const zoomedPage = pages.find((p) => p.id === zoomedId) ?? null;
 
-  async function handleCapture(file: File) {
-    if (atCap) return; // defense-in-depth - the trigger button is already disabled at cap
+  // Handles both a single camera snapshot and a multi-select from the
+  // fallback file picker (desktop, or a phone with no getUserMedia support)
+  // as one batch, so the picker's "select several at once" isn't limited to
+  // one-at-a-time the way looping single-file calls against `atCap` would be
+  // - the cap is read once here, not once per file, so a selection larger
+  // than the remaining room truncates cleanly instead of racing itself.
+  async function handleCapture(files: File[]) {
+    if (atCap || files.length === 0) return;
+    const remaining = MAX_PAGES - pages.length;
+    const toAdd = files.slice(0, remaining);
     setCapturing(true);
     setError(null);
     try {
-      const compressed = await compressImage(file); // defaults only, same call as routine-photo.tsx
-      setPages((prev) => [
-        ...prev,
-        {
+      const newPages: CapturedPage[] = [];
+      for (const file of toAdd) {
+        // Sequential, not Promise.all - selection order is what groups pages
+        // into papers (same/new-paper toggle), so it has to survive here too.
+        const compressed = await compressImage(file); // defaults only, same call as routine-photo.tsx
+        newPages.push({
           id: crypto.randomUUID(),
           blob: compressed.blob,
           extension: compressed.extension,
@@ -104,8 +114,12 @@ export function ScanScreen({
           height: compressed.height,
           previewUrl: URL.createObjectURL(compressed.blob),
           sameAsPrevious: true,
-        },
-      ]);
+        });
+      }
+      setPages((prev) => [...prev, ...newPages]);
+      if (toAdd.length < files.length) {
+        setError(`Only added ${toAdd.length} - ${MAX_PAGES} pages max per scan.`);
+      }
     } catch {
       setError("That file couldn't be read as an image.");
     } finally {
@@ -114,7 +128,8 @@ export function ScanScreen({
   }
 
   const { open: openCamera, modal: cameraModal, fallbackInputProps } = useCameraCapture(
-    (file) => void handleCapture(file),
+    (files) => void handleCapture(files),
+    { multiple: true },
   );
 
   function toggleSame(id: string) {
