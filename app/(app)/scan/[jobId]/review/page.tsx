@@ -7,7 +7,7 @@ import { resolveSubject, type SubjectCandidate } from "@/lib/routines/resolve";
 import type { Agreement } from "@/lib/scans/confidence";
 import type { RawParse } from "@/lib/scans/parse/schema";
 import { signScanImage } from "@/lib/scans/storage";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 // §5.3's verification modal, wired to a real job. jobId must be a job at
 // status 'review' that belongs to this student - anything else (not
@@ -21,9 +21,7 @@ export default async function ScanReviewPage({
 }) {
   const { jobId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) redirect("/login");
 

@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/shell/sidebar";
 import { InstallPrompt } from "@/components/install-prompt";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { signOutAction } from "@/lib/auth/actions";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 // The design system's three breakpoints:
 //
@@ -40,9 +40,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   const { data: profile } = user
     ? await supabase.from("profiles").select("full_name, email, role").eq("id", user.id).single()

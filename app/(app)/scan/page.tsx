@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { ScanScreen, type JobStatus, type SubmittedJob } from "./_components/scan-screen";
 import { formatRaw } from "@/lib/assessments/marks";
 import { DAILY_WARNING_THRESHOLD, getGeminiUsageToday } from "@/lib/gemini/usage";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 // Scanning is a student-only action (§3.3, §5.3: "Scanning is a
 // student-only action"; CLAUDE.md: "Only the student uploads papers").
@@ -16,9 +16,7 @@ export default async function ScanPage({
   searchParams: Promise<{ attachTo?: string }>;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) redirect("/login");
 

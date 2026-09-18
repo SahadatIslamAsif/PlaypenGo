@@ -3,13 +3,11 @@ import { Card } from "@/components/ui/card";
 import { SubjectTree } from "@/app/(app)/_components/subject-tree";
 import { buildSubjectTree } from "@/lib/subjects/tree";
 import { localDate } from "@/lib/routines/schedule";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 export default async function SubjectsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) {
     redirect("/login");

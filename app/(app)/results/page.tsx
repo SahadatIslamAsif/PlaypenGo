@@ -6,7 +6,7 @@ import { toWeeklySeries } from "@/lib/assessments/series";
 import { localDate } from "@/lib/routines/schedule";
 import { signScriptImage } from "@/lib/scans/storage";
 import { resolveViewedStudentId } from "@/lib/students/resolve";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 export default async function ResultsPage({
   searchParams,
@@ -14,9 +14,7 @@ export default async function ResultsPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) redirect("/login");
 

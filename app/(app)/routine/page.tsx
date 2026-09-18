@@ -5,7 +5,7 @@ import { RoutineScreen } from "./_components/routine-screen";
 import { buildRoutineGrid, emptyRoutineGrid } from "@/lib/routines/grid";
 import type { SubjectCandidate } from "@/lib/routines/resolve";
 import { signRoutineImage } from "@/lib/routines/storage";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 // All fetching happens here, as on /subjects: auth, then role, then the one
 // student this page is about, then a single Promise.all. Nothing below this
@@ -18,9 +18,7 @@ export default async function RoutinePage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) redirect("/login");
 

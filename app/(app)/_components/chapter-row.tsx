@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil, Trash2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { deleteChapter, renameChapter, updateChapterStatus } from "@/lib/subjects/actions";
@@ -40,9 +40,11 @@ export function ChapterRow({
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(chapter.name);
+  const [optimisticStatus, setOptimisticStatus] = useOptimistic(chapter.status);
 
   function setStatus(status: ChapterStatus) {
     startTransition(async () => {
+      setOptimisticStatus(status);
       const result = await updateChapterStatus(chapter.id, status);
       setError(result.error);
     });
@@ -175,7 +177,7 @@ export function ChapterRow({
               disabled={pending}
               onClick={() => setStatus(seg.value)}
               className={`h-9 min-w-11 px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                chapter.status === seg.value
+                optimisticStatus === seg.value
                   ? "bg-ink text-shell"
                   : "bg-surface text-body hover:bg-surface-sunk"
               }`}
@@ -187,9 +189,9 @@ export function ChapterRow({
         <button
           type="button"
           disabled={pending}
-          onClick={() => setStatus(chapter.status === "not_taught" ? "not_started" : "not_taught")}
+          onClick={() => setStatus(optimisticStatus === "not_taught" ? "not_started" : "not_taught")}
           className={`h-9 rounded-button border px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-            chapter.status === "not_taught"
+            optimisticStatus === "not_taught"
               ? "border-accent bg-accent text-shell"
               : "border-hairline bg-surface text-muted hover:text-ink"
           }`}

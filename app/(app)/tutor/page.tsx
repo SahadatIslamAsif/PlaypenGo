@@ -4,7 +4,7 @@ import { RosterList } from "./_components/roster-list";
 import { buildRoster, type RosterStudentInput } from "@/lib/tutor/roster";
 import { localDate } from "@/lib/routines/schedule";
 import { buildUpcoming } from "@/lib/assessments/upcoming";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -19,9 +19,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // pattern /scan uses for its own student-only gate.
 export default async function TutorRosterPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) redirect("/login");
 

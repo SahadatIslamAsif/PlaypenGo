@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ReconciliationTable } from "./_components/reconciliation-table";
 import { buildReconciliation } from "@/lib/assessments/reconciliation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 // §6: "End-of-semester reconciliation view: a table of the app's logged
 // results beside a column for the portal's published figures, so anything
@@ -21,9 +21,7 @@ export default async function ReconciliationPage({
 }) {
   const { studentId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) redirect("/login");
 

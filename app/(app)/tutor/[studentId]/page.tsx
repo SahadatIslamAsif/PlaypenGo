@@ -14,7 +14,7 @@ import { computeTrend } from "@/lib/assessments/trend";
 import { buildWeekInReview, type WeekChapterRow, type WeekResultRow } from "@/lib/notifications/week-review";
 import { addDays, localDate } from "@/lib/routines/schedule";
 import { signScriptImage } from "@/lib/scans/storage";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 
 // §8's per-student drill-down: "weak chapters, unlogged papers, trend
 // against the student's own average" plus §3.3's one tutor write —
@@ -33,9 +33,7 @@ export default async function TutorStudentPage({
 }) {
   const { studentId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) redirect("/login");
 
