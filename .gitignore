@@ -61,3 +61,6 @@ fixtures/papers/*.webp
 docs/SPEC.md
 "CLAUDE.md" 
 ".claude.md" 
+
+.vercel
+.env*

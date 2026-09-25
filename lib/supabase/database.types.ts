@@ -755,6 +755,7 @@ export type Database = {
           error: string | null
           expires_at: string
           id: string
+          parse_lease_expires_at: string | null
           raw_parse: Json | null
           result_id: string | null
           status: string
@@ -767,6 +768,7 @@ export type Database = {
           error?: string | null
           expires_at?: string
           id?: string
+          parse_lease_expires_at?: string | null
           raw_parse?: Json | null
           result_id?: string | null
           status?: string
@@ -779,6 +781,7 @@ export type Database = {
           error?: string | null
           expires_at?: string
           id?: string
+          parse_lease_expires_at?: string | null
           raw_parse?: Json | null
           result_id?: string | null
           status?: string

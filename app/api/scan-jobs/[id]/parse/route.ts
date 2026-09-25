@@ -32,19 +32,45 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   // cron route"). RLS (is_owner_student) already means a job that isn't
   // this user's own simply doesn't come back - "not found" is correct
   // either way, not a 403 that would confirm someone else's job exists.
-  const { data: job } = await supabase
+  // Claim the job atomically before doing anything else - a second POST
+  // landing while a first is still genuinely mid-parse must not start its
+  // own Gemini call. The lease (0035) is null-or-expired -> claimed by this
+  // request; a live lease means someone else already has it, and the update
+  // touches zero rows rather than racing on a separate read-then-write.
+  const leaseUntil = new Date(Date.now() + 70_000).toISOString();
+  const { data: claimed, error: claimError } = await supabase
     .from("scan_jobs")
-    .select("id, status")
+    .update({ parse_lease_expires_at: leaseUntil })
     .eq("id", jobId)
+    .in("status", Array.from(PARSEABLE_STATUSES))
+    .or(`parse_lease_expires_at.is.null,parse_lease_expires_at.lt.${new Date().toISOString()}`)
+    .select("id, status")
     .maybeSingle();
 
-  if (!job) {
-    return NextResponse.json({ error: "Scan job not found." }, { status: 404 });
+  if (claimError) {
+    return NextResponse.json({ error: "Couldn't start the parse." }, { status: 500 });
   }
 
-  if (!PARSEABLE_STATUSES.has(job.status)) {
+  if (!claimed) {
+    // The claim didn't land - work out why, only now that it matters, so
+    // the common (successful-claim) path stays a single round trip.
+    const { data: job } = await supabase
+      .from("scan_jobs")
+      .select("id, status")
+      .eq("id", jobId)
+      .maybeSingle();
+
+    if (!job) {
+      return NextResponse.json({ error: "Scan job not found." }, { status: 404 });
+    }
+    if (!PARSEABLE_STATUSES.has(job.status)) {
+      return NextResponse.json(
+        { error: `This job is ${job.status} and can't be parsed right now.` },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
-      { error: `This job is ${job.status} and can't be parsed right now.` },
+      { error: "This paper is already being read - hang tight." },
       { status: 409 },
     );
   }
@@ -57,7 +83,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   if (pagesError || !pages || pages.length === 0) {
     const message = "No pages were found for this scan.";
-    await supabase.from("scan_jobs").update({ status: "failed", error: message }).eq("id", jobId);
+    await supabase
+      .from("scan_jobs")
+      .update({ status: "failed", error: message, parse_lease_expires_at: null })
+      .eq("id", jobId);
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
@@ -106,13 +135,24 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
     const { error: updateError } = await supabase
       .from("scan_jobs")
-      .update({ status: "review", raw_parse: rawParse as unknown as Json, error: null })
+      .update({
+        status: "review",
+        raw_parse: rawParse as unknown as Json,
+        error: null,
+        parse_lease_expires_at: null,
+      })
       .eq("id", jobId);
 
     if (updateError) throw new Error(updateError.message);
 
     return NextResponse.json({ status: "review" });
   } catch (error) {
+    // The real error never reaches scan_jobs.error or the client response
+    // (below) on purpose - CLAUDE.md's copy rule keeps the Gemini SDK's raw
+    // error body off the screen. But that means it has to land SOMEWHERE
+    // for this to be debuggable at all; console.error is that place -
+    // Vercel's function logs, not anything a student/guardian/tutor sees.
+    console.error(`scan parse failed for job ${jobId}:`, error);
     // scan_jobs.error is persisted and rendered as-is by scan-screen.tsx, so
     // whatever lands here reaches a screen unfiltered - the Gemini SDK's own
     // ApiError.message is the raw Google error body and never belongs there
@@ -121,7 +161,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const message = isQuotaExceeded(error)
       ? "Couldn't read this paper right now — the daily limit has been reached. It resets each afternoon, or use Log result to enter it by hand."
       : "The paper couldn't be read.";
-    await supabase.from("scan_jobs").update({ status: "failed", error: message }).eq("id", jobId);
+    await supabase
+      .from("scan_jobs")
+      .update({ status: "failed", error: message, parse_lease_expires_at: null })
+      .eq("id", jobId);
     return NextResponse.json({ error: message }, { status: isQuotaExceeded(error) ? 429 : 500 });
   }
 }

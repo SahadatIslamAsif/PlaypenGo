@@ -84,6 +84,13 @@ export function ScanScreen({
   const [zoomedId, setZoomedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [submittedJobs, setSubmittedJobs] = useState<SubmittedJob[]>(initialJobs);
+  // Jobs with a Retry click currently in flight - the route now rejects a
+  // concurrent re-POST with 409, but the button itself still needs its own
+  // guard: without one, a second click before the first fetch resolves (the
+  // status poll only runs every 2.5s, so "parsing" can sit there for a while)
+  // would fire a second real request that only fails after reaching the
+  // server, instead of never being sent.
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
 
   const atCap = pages.length >= MAX_PAGES;
   const zoomedPage = pages.find((p) => p.id === zoomedId) ?? null;
@@ -163,17 +170,13 @@ export function ScanScreen({
     }
   }
 
-  function triggerParse(jobId: string) {
-    void parseOne(jobId);
-  }
-
   /**
    * §5.3: "One assessment at a time, one Gemini call per assessment.
    * Sequential, never parallel." Splitting several papers into one Done
    * click (the same/new-paper toggle) is the one place that rule was at
    * risk - each paper's own upload loop already runs to completion before
-   * the next starts, but triggerParse() itself was fire-and-forget, so nothing
-   * stopped two papers' parses from being in flight together. Awaiting
+   * the next starts, but a fire-and-forget trigger here would let nothing
+   * stop two papers' parses from being in flight together. Awaiting
    * parseOne() here serialises the actual Gemini calls; the void call at
    * the bottom keeps Done itself from blocking on however many are queued.
    */
@@ -246,7 +249,7 @@ export function ScanScreen({
     setSaving(false);
   }
 
-  function retryParse(jobId: string) {
+  async function retryParse(jobId: string) {
     // §5.3: "A failed job can be re-parsed without re-uploading the
     // images." Its scan_pages rows are untouched by a failure - only the
     // job's own status/error changed - so this just re-triggers the parse.
@@ -257,13 +260,24 @@ export function ScanScreen({
     // whose invocation was killed server-side before it could write
     // 'failed' - previously a permanent dead end with no server-side owner
     // left to revisit it, recoverable before now only via the 7-day TTL
-    // sweep discarding it outright. A student retrying a request that is
-    // genuinely still in flight can race it - see the "never invoked" vs
-    // "died mid-parse" discussion before loosening this further.
+    // sweep discarding it outright. The route's own lease (0035) is what
+    // tells that case apart from one still genuinely in flight; this guard
+    // just stops the same click from being fired twice locally.
+    if (retryingIds.has(jobId)) return;
+
+    setRetryingIds((prev) => new Set(prev).add(jobId));
     setSubmittedJobs((prev) =>
       prev.map((j) => (j.id === jobId ? { id: j.id, status: "parsing", error: null } : j)),
     );
-    triggerParse(jobId);
+    try {
+      await parseOne(jobId);
+    } finally {
+      setRetryingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(jobId);
+        return next;
+      });
+    }
   }
 
   async function discardJob(jobId: string) {
@@ -382,9 +396,10 @@ export function ScanScreen({
                   <button
                     type="button"
                     onClick={() => retryParse(job.id)}
-                    className="text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                    disabled={retryingIds.has(job.id)}
+                    className="text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-muted disabled:no-underline"
                   >
-                    Retry
+                    {retryingIds.has(job.id) ? "Retrying…" : "Retry"}
                   </button>
                 ) : job.status === "review" ? (
                   <Link

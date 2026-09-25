@@ -116,6 +116,18 @@ export async function loadLocalImages(imagePaths: string[]): Promise<ImageInput[
 // report a transient capacity blip as if the parse itself were wrong.
 const RETRY_DELAY_MS = 5000;
 
+// The SDK has no default request timeout, and under high demand Gemini can
+// hang instead of failing fast - a live test against this exact endpoint
+// returned a 503 in ~9s, but a hang has no such ceiling. Without a timeout
+// here, that hang runs past the parse route's own maxDuration (60s,
+// app/api/scan-jobs/[id]/parse/route.ts) and Vercel kills the function
+// outright - the route's try/catch, including the console.error added to
+// diagnose exactly this, never runs, and scan_jobs is left stuck at
+// 'parsing' forever with nothing to retry against. 20s per attempt keeps the
+// worst case (attempt + RETRY_DELAY_MS + attempt) at ~45s, inside that 60s
+// budget with room left for the image downloads and DB writes around it.
+const REQUEST_TIMEOUT_MS = 20_000;
+
 function isRetryableUnavailable(error: unknown): boolean {
   return error instanceof ApiError && error.status === 503;
 }
@@ -203,6 +215,7 @@ export async function parsePaper(
       config: {
         responseMimeType: "application/json",
         responseSchema: toSdkSchema(buildPaperParseSchema(seededChapterNames)),
+        httpOptions: { timeout: REQUEST_TIMEOUT_MS },
       },
     },
     options.onAttempt,
