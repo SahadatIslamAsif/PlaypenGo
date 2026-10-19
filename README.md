@@ -12,6 +12,12 @@
 
 **App Live Link**: https://playpengo.vercel.app/
 
+<p align="center">
+  <img src="docs/images/playpengo-demo.gif" alt="PlaypenGo walkthrough — student, guardian and tutor portals" width="100%">
+</p>
+
+<p align="center"><sub>Walkthrough of the three portals: Student → Guardian → Tutor</sub></p>
+
 ---
 
 ## Why & What
@@ -420,60 +426,60 @@ MIT © 2026 Md Sahadat Islam — see [LICENSE](LICENSE) for full text.
 ### Student
 
 **Dashboard**
-![Student dashboard](screenshots/student_dashboard.png)
+![Student dashboard](docs/images/student_dashboard.png)
 
 **Subjects and chapter progress**
-![Subjects](screenshots/subjects.png)
+![Subjects](docs/images/subjects.png)
 
 **Class routine**
-![Routine](screenshots/routine.png)
+![Routine](docs/images/routine.png)
 
 ---
 
 ### Scanning a paper
 
 **Capture**
-![Scan capture](screenshots/scan_capture.png)
+![Scan capture](docs/images/scan_capture.png)
 
-**Review screen**
-![Scan review](screenshots/scan_review.png)
-
-**Result saved**
-![Result saved](screenshots/result_saved.png)
+**Submitted papers, ready to review**
+![Scan submitted](docs/images/scan_submitted.png)
 
 ---
 
 ### Results
 
+**Logging a result manually**
+![Log a result](docs/images/log_result.png)
+
 **Results list**
-![Results](screenshots/results.png)
+![Results](docs/images/results.png)
 
 **Progress chart**
-![Progress chart](screenshots/progress_chart.png)
+![Progress chart](docs/images/progress_chart.png)
 
 ---
 
 ### Tutor
 
 **Roster**
-![Tutor roster](screenshots/tutor_roster.png)
+![Tutor roster](docs/images/tutor_roster.png)
+
+**Student drill-down**
+![Tutor student detail](docs/images/tutor_student_detail.png)
 
 **Reconciliation**
-![Reconciliation](screenshots/reconciliation.png)
+![Reconciliation](docs/images/reconciliation.png)
 
 ---
 
 ### Guardian
 
 **Read-only dashboard**
-![Guardian view](screenshots/guardian_view.png)
+![Guardian view](docs/images/guardian_view.png)
 
 ---
 
 ### Email
 
-**Evening digest**
-![Evening digest](screenshots/digest_email.png)
-
-**Confirmation page**
-![Confirmation page](screenshots/confirm_page.png)
+**Signup confirmation**
+![Signup confirmation email](docs/images/signup_confirm_email.png)
