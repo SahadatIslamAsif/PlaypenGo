@@ -13,7 +13,7 @@
 **App Live Link**: https://playpengo.vercel.app/
 
 <p align="center">
-  <img src="docs/images/playpengo-demo.gif" alt="PlaypenGo walkthrough — student, guardian and tutor portals" width="100%">
+  <img src="docs/screenshots/playpengo-demo.gif" alt="PlaypenGo walkthrough — student, guardian and tutor portals" width="100%">
 </p>
 
 <p align="center"><sub>Walkthrough of the three portals: Student → Guardian → Tutor</sub></p>
@@ -426,60 +426,60 @@ MIT © 2026 Md Sahadat Islam — see [LICENSE](LICENSE) for full text.
 ### Student
 
 **Dashboard**
-![Student dashboard](docs/images/student_dashboard.png)
+![Student dashboard](docs/screenshots/student_dashboard.png)
 
 **Subjects and chapter progress**
-![Subjects](docs/images/subjects.png)
+![Subjects](docs/screenshots/subjects.png)
 
 **Class routine**
-![Routine](docs/images/routine.png)
+![Routine](docs/screenshots/routine.png)
 
 ---
 
 ### Scanning a paper
 
 **Capture**
-![Scan capture](docs/images/scan_capture.png)
+![Scan capture](docs/screenshots/scan_capture.png)
 
 **Submitted papers, ready to review**
-![Scan submitted](docs/images/scan_submitted.png)
+![Scan submitted](docs/screenshots/scan_submitted.png)
 
 ---
 
 ### Results
 
 **Logging a result manually**
-![Log a result](docs/images/log_result.png)
+![Log a result](docs/screenshots/log_result.png)
 
 **Results list**
-![Results](docs/images/results.png)
+![Results](docs/screenshots/results.png)
 
 **Progress chart**
-![Progress chart](docs/images/progress_chart.png)
+![Progress chart](docs/screenshots/progress_chart.png)
 
 ---
 
 ### Tutor
 
 **Roster**
-![Tutor roster](docs/images/tutor_roster.png)
+![Tutor roster](docs/screenshots/tutor_roster.png)
 
 **Student drill-down**
-![Tutor student detail](docs/images/tutor_student_detail.png)
+![Tutor student detail](docs/screenshots/tutor_student_detail.png)
 
 **Reconciliation**
-![Reconciliation](docs/images/reconciliation.png)
+![Reconciliation](docs/screenshots/reconciliation.png)
 
 ---
 
 ### Guardian
 
 **Read-only dashboard**
-![Guardian view](docs/images/guardian_view.png)
+![Guardian view](docs/screenshots/guardian_view.png)
 
 ---
 
 ### Email
 
 **Signup confirmation**
-![Signup confirmation email](docs/images/signup_confirm_email.png)
+![Signup confirmation email](docs/screenshots/signup_confirm_email.png)
